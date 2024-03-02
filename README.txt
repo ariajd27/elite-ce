@@ -14,10 +14,9 @@ Current features:
  - inter-system jumps (backend only)
  - economy simulation
  - system data, maps
- - buying/selling (backend only)
+ - buying/selling
 
 Todo:
- - buying/selling frontend
  - docking and undocking
  - hyperjump frontend
  - planet and sun rendering
