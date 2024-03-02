@@ -465,6 +465,7 @@ void gen_SelectNearestSystem(bool local)
 
 void gen_ChangeSystem()
 {
+	player_fuel -= gen_distanceToTarget;
 	currentSeed = selectedSeed;
 	thisSystemData = selectedSystemData;
 	gen_distanceToTarget = 0;

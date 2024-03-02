@@ -1,9 +1,12 @@
 #ifndef ship_include_file
 #define ship_include_file
 
+#include <stdbool.h>
+
 #include "linear.h"
 #include "xorgfx.h"
 #include "variables.h"
+#include "flight.h"
 
 struct Ship
 {
@@ -11,6 +14,7 @@ struct Ship
 	struct vector_t position;
 	struct matrix_t orientation;
 
+	bool isHostile;
 	unsigned char aggro;
 
 	unsigned char isExploding : 1;

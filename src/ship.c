@@ -22,6 +22,7 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct ma
 	ships[numShips].position.z = position.z;
 	for (unsigned char i = 0; i < 9; i++) ships[numShips].orientation.a[i] = orientation.a[i];
 
+	ships[numShips].isHostile = false;
 	ships[numShips].aggro = 255;
 
 	ships[numShips].isExploding = 0;

@@ -67,14 +67,6 @@
 #define cmdr_name "JAMESON"
 #define cmdr_name_length 7
 
-enum viewDirMode_t
-{
-	FRONT,
-	LEFT,
-	RIGHT,
-	REAR
-};
-
 extern unsigned char drawCycle;
 
 enum currentMenu_t {
