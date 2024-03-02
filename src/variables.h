@@ -89,7 +89,7 @@ enum currentMenu_t {
 	MARKET,
 	UPGRADES
 };
-#define NUM_MENU_OPTIONS 5
+#define NUM_MENU_OPTIONS 6
 extern enum currentMenu_t currentMenu;
 
 extern unsigned char player_fuel;

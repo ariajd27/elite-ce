@@ -155,59 +155,58 @@ void updatePrevKeys()
 
 bool doFlightInput()
 {
+	dbg_printf("doing flight input...\n");
+
 	updateKeys();
 
-	if (currentMenu == NONE)
+	// acceleration
+	if (kb_IsDown(kb_Key2nd)) player_acceleration = 3;
+	else if (kb_IsDown(kb_KeyAlpha)) player_acceleration = -1;
+	
+	if (!yequ) // pitch/roll controls
 	{
-		// acceleration
-		if (kb_IsDown(kb_Key2nd)) player_acceleration = 3;
-		else if (kb_IsDown(kb_KeyAlpha)) player_acceleration = -1;
+		// roll
+		if (left) player_roll -= 4;
+		else if (right) player_roll += 4;
+
+		// damping
+		else if (-1 <= player_roll && player_roll <= 1) player_roll = 0; 
+		else if (player_roll < 0) player_roll += 2;
+		else if (player_roll > 0) player_roll -= 2;
+
+		// clamping
+		if (player_roll > 31) player_roll = 31;
+		else if (player_roll < -31) player_roll = -31;
 	
-		if (!yequ) // pitch/roll controls
-		{
-			// roll
-			if (left) player_roll -= 4;
-			else if (right) player_roll += 4;
+		// pitch
+		if (up) player_pitch++;
+		else if (down) player_pitch--;
 
-			// damping
-			else if (-1 <= player_roll && player_roll <= 1) player_roll = 0; 
-			else if (player_roll < 0) player_roll += 2;
-			else if (player_roll > 0) player_roll -= 2;
+		// damping
+		else if (player_pitch < 0) player_pitch++;
+		else if (player_pitch > 0) player_pitch--;
 
-			// clamping
-			if (player_roll > 31) player_roll = 31;
-			else if (player_roll < -31) player_roll = -31;
-	
-			// pitch
-			if (up) player_pitch++;
-			else if (down) player_pitch--;
+		// clamping
+		if (player_pitch > 7) player_pitch = 7;
+		else if (player_pitch < -7) player_pitch = -7;
+	}
+	else // view switching
+	{
+		if (up) viewDirMode = FRONT;
+		else if (left) viewDirMode = LEFT;
+		else if (right) viewDirMode = RIGHT;
+		else if (down) viewDirMode = REAR;
 
-			// damping
-			else if (player_pitch < 0) player_pitch++;
-			else if (player_pitch > 0) player_pitch--;
-
-			// clamping
-			if (player_pitch > 7) player_pitch = 7;
-			else if (player_pitch < -7) player_pitch = -7;
-		}
-		else // view switching
-		{
-			if (up) viewDirMode = FRONT;
-			else if (left) viewDirMode = LEFT;
-			else if (right) viewDirMode = RIGHT;
-			else if (down) viewDirMode = REAR;
-
-			// still need to do pitch/roll damping
-			if (player_pitch < 0) player_pitch++;
-			else if (player_pitch > 0) player_pitch--;
-			if (player_roll < 0) player_roll++;
-			else if (player_roll > 0) player_roll--;
-		}
+		// still need to do pitch/roll damping
+		if (player_pitch < 0) player_pitch++;
+		else if (player_pitch > 0) player_pitch--;
+		if (player_roll < 0) player_roll++;
+		else if (player_roll > 0) player_roll--;	
 	}
 
 	updatePrevKeys();
 
-	if (graph && prevGraph == 0)
+	if (graph && prevGraph == 1) // 1 bc we are after 1 update... kinda janky, but...
 	{
 		currentMenu = MAIN;
 		return false;
@@ -259,8 +258,19 @@ void drawMenu(bool resetCrs)
 			xor_Print("Status\n");
 			xor_Print("Navigation\n");
 			xor_Print("System Data\n");
-			xor_Print(player_condition != DOCKED ? "Cargo Hold\n" : "Sell Cargo\n");
-			xor_Print("Save & Quit");
+
+			if (player_condition == DOCKED)
+			{
+				xor_Print("Sell Cargo\n");
+				xor_Print("Leave Station\n");
+				xor_Print("Save & Quit");
+			}
+			else
+			{
+				xor_Print("Cargo Hold\n");
+				xor_Print("Return\n");
+				xor_Print("Quit");
+			}
 
 			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
 					29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
@@ -428,9 +438,10 @@ bool doMenuInput()
 					case 3:
 						currentMenu = INVENTORY;
 						break;
+					case 5:
+						toExit = true; // exit game and menu
 					case 4:
-						toExit = true;
-						return false;
+						return false; // just exit menu
 				}
 			}
 
@@ -650,6 +661,8 @@ void begin()
 
 void doFlight()
 {
+	dbg_printf("doing flight...\n");
+
 	while (doFlightInput())
 	{
 		clock_t frameTimer = clock();
@@ -709,10 +722,19 @@ void doFlight()
 
 		drawDashboard();
 
+		dbg_printf("frame ready...\n");
+
 		while (clock() - frameTimer < FRAME_TIME);
 
 		gfx_BlitBuffer();
+		
+		dbg_printf("blit complete\n");
 	}
+}
+
+void resetPlayerCondition()
+{
+	player_condition = GREEN;
 }
 
 bool run()
@@ -726,6 +748,7 @@ bool run()
 		while (doMenuInput()); // kicks out once it's time
 		if (toExit) break;
 
+		resetPlayerCondition();
 		doFlight(); // no assurances here--- changed a bit during menu overhaul.
 					// i haven't tested yet if the loop still loops properly
 	}
