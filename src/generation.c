@@ -280,9 +280,7 @@ void gen_PrintRadius(const struct gen_seed_t* in)
 
 void gen_PrintDistanceToTarget()
 {
-	xor_PrintUInt24(gen_distanceToTarget / 10, 4);
-	xor_PrintChar('.');
-	xor_PrintUInt8(gen_distanceToTarget % 10, 1);
+	xor_PrintUInt24Tenths(gen_distanceToTarget);
 	xor_Print(" Light Years");
 }
 
@@ -422,6 +420,8 @@ void gen_RedrawCursorPosition(signed int const prevCrsX, signed int const prevCr
 
 void gen_SelectNearestSystem(bool local)
 {
+	gen_PrintSelectionOnMap();
+
 	struct gen_seed_t loopSeed = originSeed;
 
 	unsigned char crsXDescaled = local ? thisSystemData.x + gen_crsX / 4 : gen_crsX;
@@ -458,6 +458,9 @@ void gen_SelectNearestSystem(bool local)
 	gen_SetSystemData(&selectedSystemData, &selectedSeed);
 	gen_ResetDistanceToTarget();	
 	gen_ResetCursorPosition(local);
+	gen_PrintSelectionOnMap();
+
+	gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 }
 
 void gen_ChangeSystem()

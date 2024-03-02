@@ -31,7 +31,9 @@ void xor_SetCursorPos(unsigned char x, unsigned char y);
 void xor_PrintChar(char toPrint);
 void xor_Print(char const str[]);
 void xor_PrintUInt8(unsigned char toPrint, unsigned char maxLength);
+void xor_PrintUInt8Tenths(unsigned char toPrint, unsigned char maxLength);
 void xor_PrintUInt24(unsigned int toPrint, unsigned char maxLength);
 void xor_PrintUInt24Adaptive(unsigned int toPrint);
+void xor_PrintUInt24Tenths(unsigned int toPrint);
 
 #endif

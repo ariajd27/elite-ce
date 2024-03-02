@@ -402,6 +402,13 @@ void xor_PrintUInt8(unsigned char toPrint, unsigned char maxLength)
 	}
 }
 
+void xor_PrintUInt8Tenths(unsigned char toPrint, unsigned char maxLength)
+{
+	xor_PrintUInt8(toPrint / 10, maxLength);
+	xor_PrintChar('.');
+	xor_PrintUInt8(toPrint % 10, 1);
+}
+
 void xor_PrintUInt24(unsigned int toPrint, unsigned char maxLength)
 {
 	unsigned int dividend = toPrint;
@@ -430,4 +437,11 @@ void xor_PrintUInt24Adaptive(unsigned int toPrint)
 		for (trialLength = 8; intpow(10, trialLength - 1) > toPrint; trialLength--);
 		xor_PrintUInt24(toPrint, trialLength);
 	}
+}
+
+void xor_PrintUInt24Tenths(unsigned int toPrint)
+{
+	xor_PrintUInt24Adaptive(toPrint / 10);
+	xor_PrintChar('.');
+	xor_PrintUInt8(toPrint % 10, 1);
 }

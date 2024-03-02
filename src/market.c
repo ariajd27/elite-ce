@@ -99,9 +99,7 @@ void mkt_PrintMarketTable()
 		xor_Print(productNames[i]);
 
 		xor_SetCursorPos(15, y);
-		xor_PrintUInt24(localEntries[i].price * 4 / 10, 2);
-		xor_PrintChar('.');
-		xor_PrintUInt8(localEntries[i].price * 4 % 10, 1);
+		xor_PrintUInt24Tenths(localEntries[i].price * 4);
 		xor_Print(" Cr");
 
 		if (localEntries[i].quantity > 0)

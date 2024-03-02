@@ -289,14 +289,10 @@ void drawMenu(bool resetCrs)
 			printPlayerCondition();
 
 			xor_Print("\nFuel: ");
-			xor_PrintUInt8(player_fuel / 10, 1);
-			xor_PrintChar('.');
-			xor_PrintUInt8(player_fuel % 10, 1);
+			xor_PrintUInt8Tenths(player_fuel, 1);
 			xor_Print(" Light Years");
 			xor_Print("\nCash: ");
-			xor_PrintUInt24Adaptive(player_money / 10);
-			xor_PrintChar('.');
-			xor_PrintUInt8(player_money % 10, 1);
+			xor_PrintUInt24Tenths(player_money);
 			xor_Print(" Cr");
 
 			xor_Print("\nLegal Status: ");
