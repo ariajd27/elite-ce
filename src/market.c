@@ -31,7 +31,7 @@ const struct mkt_tradeGood_t {
 	{  97, -1, 'k',  66, 0x07 },
 	{ 171, -2, 'k',  55, 0x1f },
 	{  45, -1, 'g', 250, 0x0f },
-	{  53, 15, 't', 192, 0x07 }
+	{  53, 15, 'g', 192, 0x07 }
 };
 
 const char productNames[NUM_TRADE_GOODS][13] = {
@@ -121,6 +121,13 @@ void mkt_PrintMarketTable()
 
 void mkt_PrintInventoryTable()
 {
+	// capacity
+	xor_SetCursorPos(24, 1);
+	xor_PrintUInt8(player_cargo_cap - player_cargo_space, 2);
+	xor_PrintChar('/');
+	xor_PrintUInt8(player_cargo_cap, 2);
+	xor_PrintChar('t');
+
 	// headings
 	xor_SetCursorPos(1, 3);
 	xor_Print("PRODUCT");
@@ -231,7 +238,16 @@ bool mkt_Buy(unsigned char goodIndex)
 	unsigned char const quantity = mkt_AskForQuantity(goodIndex, true);
 
 	if (quantity > localEntries[goodIndex].quantity) return false; // not enough to buy
-	if (quantity < player_cargo_space) return false; // not enough space in hold
+	
+	// check if sufficient cargo hold space available
+	if (tradeGoods[goodIndex].unitSymbol == 't')
+	{
+		if (quantity > player_cargo_space) return false;
+	}
+	else
+	{
+		if (inventory[goodIndex] + quantity > 200) return false;
+	}
 
 	unsigned int price = (unsigned int)localEntries[goodIndex].price * quantity * 4;
 	if (price <= player_money) 
@@ -239,6 +255,7 @@ bool mkt_Buy(unsigned char goodIndex)
 		inventory[goodIndex] += quantity;
 		localEntries[goodIndex].quantity -= quantity;
 		player_money -= price;
+		if (tradeGoods[goodIndex].unitSymbol == 't') player_cargo_space -= quantity;
 		return true;
 	}
 	else return false; // can't afford
@@ -263,6 +280,7 @@ bool mkt_Sell(unsigned char crsPos)
 	if (quantity > inventory[goodIndex]) return false; // not enough to sell
 
 	player_money += (unsigned int)localEntries[goodIndex].price * quantity * 4;
+	if (tradeGoods[goodIndex].unitSymbol == 't') player_cargo_space += quantity;
 	inventory[goodIndex] -= quantity;
 	return true;
 }

@@ -96,5 +96,6 @@ extern unsigned char player_fuel;
 extern unsigned int player_money;
 
 extern unsigned char player_cargo_space;
+extern unsigned char player_cargo_cap;
 
 #endif

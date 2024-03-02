@@ -44,6 +44,7 @@ unsigned char player_fuel;
 unsigned int player_money;
 
 unsigned char player_cargo_space;
+unsigned char player_cargo_cap;
 
 enum viewDirMode_t viewDirMode;
 
@@ -258,7 +259,7 @@ void drawMenu(bool resetCrs)
 			xor_Print("Status\n");
 			xor_Print("Navigation\n");
 			xor_Print("System Data\n");
-			xor_Print("Cargo Hold\n");
+			xor_Print(player_condition != DOCKED ? "Cargo Hold\n" : "Sell Cargo\n");
 			xor_Print("Save & Quit");
 
 			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
@@ -288,8 +289,10 @@ void drawMenu(bool resetCrs)
 			printPlayerCondition();
 
 			xor_Print("\nFuel: ");
-			xor_PrintUInt8(player_fuel, 2);
-			xor_PrintChar('t');
+			xor_PrintUInt8(player_fuel / 10, 1);
+			xor_PrintChar('.');
+			xor_PrintUInt8(player_fuel % 10, 1);
+			xor_Print(" Light Years");
 			xor_Print("\nCash: ");
 			xor_PrintUInt24Adaptive(player_money / 10);
 			xor_PrintChar('.');
@@ -354,7 +357,7 @@ void drawMenu(bool resetCrs)
 
 		case INVENTORY:
 
-			xor_CenterText("CARGO HOLD", 10, HEADER_Y);
+			xor_CenterText(player_condition == DOCKED ? "SELL CARGO" : "CARGO HOLD", 10, HEADER_Y);
 
 			mkt_PrintInventoryTable();
 
@@ -363,6 +366,12 @@ void drawMenu(bool resetCrs)
 				xor_FillRectangle(DASH_HOFFSET + 5, 
 						HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 			}
+
+			break;
+
+		case UPGRADES:
+
+			xor_CenterText("OUTFITTING", 10, HEADER_Y);
 
 			break;
 
@@ -636,6 +645,9 @@ void begin()
 
 	player_fuel = 70;
 	player_money = 1000;
+
+	player_cargo_space = 25;
+	player_cargo_cap = 25;
 
 	viewDirMode = FRONT;
 }
