@@ -33,7 +33,6 @@ enum {
 } player_condition;
 
 enum currentMenu_t currentMenu;
-#define NUM_MENU_OPTIONS 5
 unsigned char menu_selOption = 0;
 
 unsigned char player_speed;
@@ -236,7 +235,7 @@ void printPlayerCondition()
 	}
 }
 
-void drawMenu()
+void drawMenu(bool resetCrs)
 {
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(0, 0, GFX_LCD_WIDTH, GFX_LCD_HEIGHT);
@@ -245,7 +244,7 @@ void drawMenu()
 	gfx_Rectangle(DASH_HOFFSET, 0, DASH_WIDTH, DASH_VOFFSET);
 	xor_HorizontalLine(HEADER_DIVIDER_Y, DASH_HOFFSET + 1, DASH_HOFFSET + DASH_WIDTH - 2);
 
-	menu_selOption = 0;
+	if (resetCrs) menu_selOption = 0;
 
 	switch (currentMenu)
 	{
@@ -262,7 +261,8 @@ void drawMenu()
 			xor_Print("Cargo Hold\n");
 			xor_Print("Save & Quit");
 
-			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2, 29 + 16 * menu_selOption, 104, 11);
+			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
+					29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
 
 			break;
 			
@@ -291,7 +291,9 @@ void drawMenu()
 			xor_PrintUInt8(player_fuel, 2);
 			xor_PrintChar('t');
 			xor_Print("\nCash: ");
-			xor_PrintUInt24Adaptive(player_money);
+			xor_PrintUInt24Adaptive(player_money / 10);
+			xor_PrintChar('.');
+			xor_PrintUInt8(player_money % 10, 1);
 			xor_Print(" Cr");
 
 			xor_Print("\nLegal Status: ");
@@ -356,6 +358,12 @@ void drawMenu()
 
 			mkt_PrintInventoryTable();
 
+			if (player_condition == DOCKED && !mkt_InventoryEmpty())
+			{
+				xor_FillRectangle(DASH_HOFFSET + 5, 
+						HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+			}
+
 			break;
 
 		default:
@@ -386,13 +394,13 @@ bool doMenuInput()
 
 			returnMenu = player_condition == DOCKED ? MARKET : NONE;
 
-			if (up && prevUp == 0)
+			if (up && (prevUp == 0 || prevUp > HOLD_TIME))
 			{
 				if (menu_selOption > 0) menu_selOption--;
 				else menu_selOption = NUM_MENU_OPTIONS - 1;
 			}
 				
-			if (down && prevDown == 0)
+			if (down && (prevDown == 0 || prevDown > HOLD_TIME))
 			{
 				menu_selOption++;
 				if (menu_selOption >= NUM_MENU_OPTIONS) menu_selOption = 0;
@@ -423,8 +431,10 @@ bool doMenuInput()
 
 			if (menu_selOption != prevSelOption)
 			{
-				xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2, 29 + 16 * menu_selOption, 104, 11);
-				xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2, 29 + 16 * prevSelOption, 104, 11);
+				xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2, 
+						29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
+				xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2, 
+						29 + 16 * prevSelOption, MM_SELBAR_WIDTH, 11);
 				gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 			}
 
@@ -524,6 +534,7 @@ bool doMenuInput()
 			if (enter && prevEnter == 0)
 			{
 				mkt_Buy(menu_selOption);
+				drawMenu(false);
 			}
 
 			if (menu_selOption != prevSelOption)
@@ -550,7 +561,7 @@ bool doMenuInput()
 
 		case INVENTORY:
 
-			if (player_condition == DOCKED)
+			if (player_condition == DOCKED && !mkt_InventoryEmpty())
 			{
 				if (up && (prevUp == 0 || prevUp > HOLD_TIME))
 				{
@@ -563,9 +574,19 @@ bool doMenuInput()
 					if (menu_selOption >= NUM_TRADE_GOODS) menu_selOption = 0;
 				}
 
+				if (menu_selOption != prevSelOption)
+				{
+					xor_FillRectangle(DASH_HOFFSET + 5, 
+							HEADER_DIVIDER_Y + 10 + 8 * prevSelOption, DASH_WIDTH - 10, 9);
+					xor_FillRectangle(DASH_HOFFSET + 5, 
+							HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+					gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+				}
+
 				if (enter && prevEnter == 0)
 				{
 					mkt_Sell(menu_selOption);
+					drawMenu(true);
 				}
 			}
 
@@ -584,7 +605,7 @@ bool doMenuInput()
 
 	if (currentMenu == NONE) return false;
 
-	if (lastMenu != currentMenu) drawMenu();
+	if (lastMenu != currentMenu) drawMenu(true);
 	
 	return true;
 }
@@ -614,7 +635,7 @@ void begin()
 	player_pitch = 0;
 
 	player_fuel = 70;
-	player_money = 100;
+	player_money = 1000;
 
 	viewDirMode = FRONT;
 }
@@ -693,7 +714,7 @@ bool run()
 	// core game loop
 	while (true)
 	{
-		drawMenu();
+		drawMenu(true);
 		while (doMenuInput()); // kicks out once it's time
 		if (toExit) break;
 

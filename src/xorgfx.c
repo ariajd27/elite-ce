@@ -420,7 +420,14 @@ void xor_PrintUInt24(unsigned int toPrint, unsigned char maxLength)
 
 void xor_PrintUInt24Adaptive(unsigned int toPrint)
 {
-	unsigned char trialLength;
-	for (trialLength = 8; intpow(10, trialLength - 1) > toPrint; trialLength--);
-	xor_PrintUInt24(toPrint, trialLength);
+	if (toPrint == 0)
+	{
+		xor_PrintChar('0');
+	}
+	else
+	{
+		unsigned char trialLength;
+		for (trialLength = 8; intpow(10, trialLength - 1) > toPrint; trialLength--);
+		xor_PrintUInt24(toPrint, trialLength);
+	}
 }

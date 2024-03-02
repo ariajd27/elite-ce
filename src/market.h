@@ -7,6 +7,8 @@ void mkt_PrintInventoryTable();
 
 // queries the amount then makes the transaction, updating inventory & money
 bool mkt_Buy(unsigned char goodIndex);
-bool mkt_Sell(unsigned char goodIndex);
+bool mkt_Sell(unsigned char crsPos);
+
+bool mkt_InventoryEmpty();
 
 #endif

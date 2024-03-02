@@ -138,42 +138,52 @@ void mkt_PrintInventoryTable()
 		xor_PrintUInt8(inventory[i], 2);
 		xor_PrintChar(tradeGoods[i].unitSymbol);
 		if (tradeGoods[i].unitSymbol == 'k') xor_PrintChar('g');
+
+		y++;
 	}
 }
 
 #include <debug.h>
 
-unsigned char mkt_AskForQuantity(unsigned char goodIndex, bool toBuy)
+void mkt_PrintQtyQuery(unsigned char const goodIndex, bool const toBuy)
 {
-	dbg_printf("top of ask routine");
-
 	xor_SetCursorPos(0, NUM_TRADE_GOODS + 4);
-	xor_Print("Units of ");
+	xor_Print("Qty ");
 	xor_Print(productNames[goodIndex]);
 	xor_Print(" to ");
 	xor_Print(toBuy ? "buy" : "sell");
 	xor_Print("? ");
+}
 
+void mkt_PrintQueryQty(unsigned char const x, unsigned char const quantity)
+{
+	xor_SetCursorPos(x, NUM_TRADE_GOODS + 4);
+	xor_PrintUInt24Adaptive(quantity);
+}
+
+unsigned char mkt_AskForQuantity(unsigned char goodIndex, bool toBuy)
+{
+	mkt_PrintQtyQuery(goodIndex, toBuy);
+	const unsigned char resetX = xor_cursorX;
+	mkt_PrintQueryQty(resetX, 0);
 	gfx_BlitBuffer();
 
-	dbg_printf("first buffer blit done");
-
-	dbg_printf("done waiting for enter clear");
-
-	const unsigned char resetX = xor_cursorX;
-	unsigned char quantity = 0;
+	unsigned int quantity = 0;
 	bool prev[10];
 	bool current[10];
-	bool prevEnter;
-	do
+	bool prevEnter = kb_IsDown(kb_KeyEnter);
+	while (true)
 	{
-		dbg_printf("beginning polling loop iteration");
-
 		clock_t frameTimer = clock();
 
 		kb_Scan();
 
-		prevEnter = kb_IsDown(kb_KeyEnter);
+		if (kb_IsDown(kb_KeyClear)) 
+		{
+			mkt_PrintQtyQuery(goodIndex, toBuy);
+			mkt_PrintQueryQty(resetX, quantity);
+			return 0;
+		}
 
 		current[0] = kb_IsDown(kb_Key0);
 		current[1] = kb_IsDown(kb_Key1);
@@ -186,12 +196,7 @@ unsigned char mkt_AskForQuantity(unsigned char goodIndex, bool toBuy)
 		current[8] = kb_IsDown(kb_Key8);
 		current[9] = kb_IsDown(kb_Key9);
 
-		// delete current display number
-		xor_SetCursorPos(resetX, NUM_TRADE_GOODS + 4);
-		if (quantity > 0) xor_PrintUInt24Adaptive(quantity);
-		else xor_PrintChar('0');
-
-		if (kb_IsDown(kb_KeyClear)) return 0;
+		unsigned char prevQty = quantity;
 
 		for (unsigned char i = 0; i < 10; i++) 
 		{
@@ -204,22 +209,19 @@ unsigned char mkt_AskForQuantity(unsigned char goodIndex, bool toBuy)
 			prev[i] = current[i];
 		}
 
-		// rewrite new display number
-		xor_SetCursorPos(resetX, NUM_TRADE_GOODS + 4);
-		if (quantity > 0) xor_PrintUInt24Adaptive(quantity);
-		else xor_PrintChar('0');
+		if (quantity > 255) quantity = prevQty;
 
-		dbg_printf("done prepping frame");
+		// rewrite new display number
+		mkt_PrintQueryQty(resetX, prevQty);
+		mkt_PrintQueryQty(resetX, quantity);
 
 		while (clock() - frameTimer < FRAME_TIME);
 
-		gfx_BlitBuffer();
+		gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 
-		dbg_printf("frame blitted");
+		if (kb_IsDown(kb_KeyEnter) && !prevEnter) break;
+		prevEnter = kb_IsDown(kb_KeyEnter);
 	}
-	while (!kb_IsDown(kb_KeyEnter) || kb_IsDown(prevEnter));
-
-	dbg_printf("exited polling loop");
 
 	return quantity;
 }
@@ -231,7 +233,7 @@ bool mkt_Buy(unsigned char goodIndex)
 	if (quantity > localEntries[goodIndex].quantity) return false; // not enough to buy
 	if (quantity < player_cargo_space) return false; // not enough space in hold
 
-	unsigned int price = (unsigned int)localEntries[goodIndex].price * quantity;
+	unsigned int price = (unsigned int)localEntries[goodIndex].price * quantity * 4;
 	if (price <= player_money) 
 	{
 		inventory[goodIndex] += quantity;
@@ -239,15 +241,38 @@ bool mkt_Buy(unsigned char goodIndex)
 		player_money -= price;
 		return true;
 	}
-	else return false;
+	else return false; // can't afford
 }
 
-bool mkt_Sell(unsigned char goodIndex)
+bool mkt_Sell(unsigned char crsPos)
 {
+	unsigned char goodIndex;
+	unsigned char toGo = crsPos + 1;
+	for (unsigned char i = 0; true; i++)
+	{
+		if (inventory[i] > 0) toGo--;
+		if (toGo == 0)
+		{
+			goodIndex = i;
+			break;
+		}
+	}
+
 	unsigned char const quantity = mkt_AskForQuantity(goodIndex, false);
 
 	if (quantity > inventory[goodIndex]) return false; // not enough to sell
 
-	player_money += (unsigned int)localEntries[goodIndex].price * quantity;
+	player_money += (unsigned int)localEntries[goodIndex].price * quantity * 4;
+	inventory[goodIndex] -= quantity;
+	return true;
+}
+
+bool mkt_InventoryEmpty()
+{
+	for (unsigned char i = 0; i < NUM_TRADE_GOODS; i++)
+	{
+		if (inventory[i] > 0) return false;
+	}
+
 	return true;
 }

@@ -7,7 +7,7 @@
 
 #define FRAME_TIME 1600
 #define CURSOR_BLINK_TIME 10
-#define HOLD_TIME 2
+#define HOLD_TIME 3
 
 #define DASH_WIDTH (dashleft_width + dashcenter_width + dashright_width)
 #define DASH_HEIGHT dashleft_height
@@ -27,6 +27,8 @@
 #define xor_textCols (xor_clipWidth / 8)
 
 #define LEFT_TEXT_INDENT 8
+
+#define MM_SELBAR_WIDTH 120
 
 #define LCL_MAP_HFIX 125
 #define LCL_MAP_VFIX 95
@@ -87,7 +89,7 @@ enum currentMenu_t {
 	MARKET,
 	UPGRADES
 };
-
+#define NUM_MENU_OPTIONS 5
 extern enum currentMenu_t currentMenu;
 
 extern unsigned char player_fuel;
