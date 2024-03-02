@@ -1,0 +1,11 @@
+global_palette.h
+global_palette.c
+dashcenter.h
+dashcenter.c
+dashleft.h
+dashleft.c
+dashright.h
+dashright.c
+stationsoi.h
+stationsoi.c
+gfx.h
