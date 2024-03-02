@@ -1,5 +1,6 @@
 #include "stardust.h"
 #include "xorgfx.h"
+#include "flight.h"
 
 #include "variables.h"
 

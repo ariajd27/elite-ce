@@ -1,7 +1,7 @@
 #ifndef stardust_include_file
 #define stardust_include_file
 
-#include "variables.h"
+#include "flight.h"
 
 void stardust_Draw();
 void stardust_Move(enum viewDirMode_t viewDirMode,

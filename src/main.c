@@ -450,17 +450,16 @@ bool doMenuInput()
 
 void begin()
 {
-	dbg_printf("preparing initial gamestate...\n");
-	
 	currentMenu = STATUS;
 	player_condition = DOCKED;
 
 	drawCycle = 0;
 
 	originSeed = (struct gen_seed_t){ 0x5a4a, 0x0248, 0xb753 };
-	currentSeed = originSeed;
+	currentSeed = (struct gen_seed_t){ 0xad38, 0x149c, 0x151d };
 
 	gen_currentGalaxy = 0;
+
 	gen_SetSystemData(&thisSystemData, &currentSeed);
 	selectedSeed = currentSeed;
 	selectedSystemData = thisSystemData;
@@ -480,16 +479,18 @@ bool run()
 {
 	begin();	
 
-	// core game loop
+	// core game loop. this is kinda strange, but it avoids recursion.
+	// basically, we're either in a menu, or in flight, and whenever that
+	// flips, it'll be to the other one. so there's actually no reason to
+	// store a state! instead, we just go menu, flight, menu, flight, etc.
 	while (true)
 	{
 		drawMenu(true);
 		while (doMenuInput()); // kicks out once it's time
-		if (toExit) break;
+		if (toExit) break; // "quit" pressed instead of just "return"
 
 		resetPlayerCondition();
-		doFlight(); // no assurances here--- changed a bit during menu overhaul.
-					// i haven't tested yet if the loop still loops properly
+		doFlight();
 	}
 
 	return false;
