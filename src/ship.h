@@ -8,9 +8,12 @@
 #include "variables.h"
 #include "flight.h"
 
+#define SUN 101
+#define PLANET 100
+
 struct Ship
 {
-	unsigned char shipType : 4;
+	unsigned char shipType;
 	struct vector_t position;
 	struct matrix_t orientation;
 

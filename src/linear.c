@@ -1,9 +1,6 @@
 #include <stdlib.h>
-
 #include "linear.h"
-
-#include <debug.h>
-#include <math.h>
+#include "intmath.h"
 
 struct vector_t add(struct vector_t a, struct vector_t b)
 {
@@ -62,23 +59,17 @@ struct vector_t proj(struct vector_t a, struct vector_t b)
 
 unsigned int magnitude(struct vector_t a)
 {
-	return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+	return intsqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
 struct vector_t normalize(struct vector_t a)
 {
-	dbg_printf("normalizing (%d, %d, %d)...\n", a.x, a.y, a.z);
-
 	struct vector_t newVector;
 	signed int const mag = magnitude(a) & 0x7fffff;
-
-	dbg_printf("magnitude: %d\n", mag);
 
 	newVector.x = a.x * 256 / mag;
 	newVector.y = a.y * 256 / mag;
 	newVector.z = a.z * 256 / mag;
-
-	dbg_printf("normalized: (%d, %d, %d)\n", newVector.x, newVector.y, newVector.z);
 
 	return newVector;
 }
@@ -150,10 +141,6 @@ struct matrix_t transpose(struct matrix_t a)
 
 struct matrix_t orthonormalize(struct matrix_t a)
 {
-	dbg_printf("orthonormalizing (");
-	for (unsigned char i = 0; i < 8; i++) dbg_printf("%d, ", a.a[i]);
-	dbg_printf("%d)...\n", a.a[8]); 
-
 	// modified from original algorithm
 	struct vector_t u1 = getRow(a, 2);
 	u1 = normalize(u1); // done with u1!
@@ -166,10 +153,6 @@ struct matrix_t orthonormalize(struct matrix_t a)
 	struct vector_t u3 = cross(u1, u2); // magnitude already equals 1 x 1 = 1... that was easy
 
 	struct matrix_t output = Matrix(u3.x, u3.y, u3.z, u2.x, u2.y, u2.z, u1.x, u1.y, u1.z);
-
-	dbg_printf("output: (");
-	for (unsigned char i = 0; i < 8; i++) dbg_printf("%d, ", output.a[i]);
-	dbg_printf("%d)\n", output.a[8]);
 
 	return output;
 }

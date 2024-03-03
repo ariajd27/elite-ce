@@ -7,6 +7,7 @@
 #include "xorgfx.h"
 #include "variables.h"
 #include "market.h"
+#include "ship.h"
 
 unsigned char gen_currentGalaxy;
 
@@ -470,4 +471,7 @@ void gen_ChangeSystem()
 	thisSystemData = selectedSystemData;
 	gen_distanceToTarget = 0;
 	mkt_ResetLocalMarket();
+
+	numShips = 0;
+	// TODO place celestial bodies
 }

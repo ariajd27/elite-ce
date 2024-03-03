@@ -63,6 +63,7 @@
 #define NUM_TRADE_GOODS 17
 
 #define PLAYER_MAX_SPEED 0x1c
+#define CLST_SCALE 20
 
 #define cmdr_name "JAMESON"
 #define cmdr_name_length 7

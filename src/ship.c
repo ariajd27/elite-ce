@@ -1,12 +1,10 @@
 #include "ship.h"
 #include "ship_data.h"
-
 #include <graphx.h>
 #include "xorgfx.h"
 #include "linear.h"
-
 #include "variables.h"
-
+#include "intmath.h"
 #include <debug.h>
 
 struct Ship ships[MAX_SHIPS];
@@ -169,11 +167,12 @@ void ShipAsWireframe(unsigned char shipIndex)
 	}
 }
 
-void ShipAsPlanet(unsigned char shipIndex)
+void ShipAsBody(unsigned char shipIndex)
 {
-	ShipAsPoint(shipIndex);
-
-	dbg_printf("drawing as planet...\n");
+	const struct int_point_t center = ProjPoint(ships[shipIndex].position);
+	const unsigned int radius = 24576 / ships[shipIndex].position.z;
+	if ((ships[shipIndex].shipType & 1) == 0) xor_Circle(center.x, center.y, radius);
+	else xor_FillCircle(center.x, center.y, radius);
 }
 
 void DrawShip(unsigned char shipIndex)
@@ -181,12 +180,6 @@ void DrawShip(unsigned char shipIndex)
 	dbg_printf("drawing ship at index %d...\n", shipIndex);
 	dbg_printf("position: (%d, %d, %d)\n", 
 			ships[shipIndex].position.x, ships[shipIndex].position.y, ships[shipIndex].position.z);
-
-	if (ships[shipIndex].shipType > BP_ESCAPEPOD)
-	{
-		ShipAsPlanet(shipIndex);
-		return;
-	}
 
 	if (ships[shipIndex].toExplode)
 	{
@@ -205,19 +198,34 @@ void DrawShip(unsigned char shipIndex)
 	if (ships[shipIndex].position.z <= 0) return;
 	if ((unsigned int)ships[shipIndex].position.z >= 0xc00000) return;
 	if (ships[shipIndex].position.x >= ships[shipIndex].position.z) return;
+	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
+	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 
 	dbg_printf("ship is within screen area\n");
 
-	if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	if (ships[shipIndex].shipType > BP_ESCAPEPOD) ShipAsBody(shipIndex);
+	else if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
 	else ShipAsWireframe(shipIndex);
 }
 
 void DoAI(unsigned char shipIndex)
 {
+	if (ships[shipIndex].shipType > BP_ESCAPEPOD) return;
 	if (ships[shipIndex].shipType == BP_CORIOLIS)
 	{
 		ships[shipIndex].roll = 127;
+		return;
+	}
+
+	if (ships[shipIndex].position.x > 224 * 256 
+			|| ships[shipIndex].position.y > 224 * 256 
+			|| ships[shipIndex].position.z > 224 * 256
+			|| ships[shipIndex].position.x < -224 * 256
+			|| ships[shipIndex].position.y < -224 * 256
+			|| ships[shipIndex].position.z < -224 * 256)
+	{
+		RemoveShip(shipIndex);
 		return;
 	}
 

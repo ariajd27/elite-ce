@@ -12,16 +12,13 @@
 #include <string.h>
 
 #include "variables.h"
-
+#include "linear.h"
 #include "ship.h"
 #include "ship_data.h"
 #include "stardust.h"
 #include "generation.h"
-#include "market.h"
 #include "flight.h"
 #include "input.h"
-
-#include <debug.h>
 
 unsigned char player_speed;
 signed char player_acceleration;
@@ -44,6 +41,9 @@ void flightInit()
 	player_pitch = 0;
 
 	viewDirMode = FRONT;
+
+	NewShip(PLANET, (struct vector_t){ 0, 0, 2500 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+	NewShip(BP_CORIOLIS, (struct vector_t){ 0, 0, -256 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 }
 
 void drawSpaceView()
@@ -77,6 +77,9 @@ void drawDashboard()
 	// radar dots
 	for (unsigned char i = 0; i < numShips; i++)
 	{
+		// assume stars, planets too far away
+		if (ships[i].shipType > BP_ESCAPEPOD) continue;
+
 		// check to make sure ship in range
 		if (ships[i].position.x < -63 * 256) continue;
 		if (ships[i].position.x > 63 * 256) continue;
@@ -126,8 +129,6 @@ void drawDashboard()
 
 bool doFlightInput()
 {
-	dbg_printf("doing flight input...\n");
-
 	updateKeys();
 
 	// acceleration
@@ -221,7 +222,7 @@ void doFlight()
 		for (unsigned char i = 0; i < numShips; i++)
 		{
 			// apply speed to other ships
-			ships[i].position.z -= player_speed;
+			ships[i].position.z -= player_speed / (ships[i].shipType > BP_ESCAPEPOD ? CLST_SCALE : 1);
 	
 			// apply pitch and roll to other ships' positions
 			signed int oldY = ships[i].position.y - (player_roll * ships[i].position.x) / 256;

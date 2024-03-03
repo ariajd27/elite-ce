@@ -1,11 +1,12 @@
 #include <graphx.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
 #include <debug.h>
 
+#include "xorgfx.h"
+#include "intmath.h"
+#include "trig.h"
 #include "font_data.h"
-
 #include "variables.h"
 
 unsigned char xor_cursorX = 0;
@@ -257,65 +258,65 @@ void xor_FillRectangle(unsigned int x, unsigned char y, unsigned int width, unsi
 	}
 }
 
-void xor_Circle(unsigned int cX, unsigned int cY, unsigned char r)
+void xor_Circle(signed int cX, signed int cY, unsigned int r)
 {
-	unsigned int x = 0;
-	unsigned char y = r;
-	signed int d = 3 - 2 * r;
-
-	while (y >= x)
-	{
-		xor_Point(cX + x, cY + y);
-		xor_Point(cX + x, cY - y);
-		xor_Point(cX - x, cY + y);
-		xor_Point(cX - x, cY - y);
-		xor_Point(cX + y, cY + x);
-		xor_Point(cX + y, cY - x);
-		xor_Point(cX - y, cY + x);
-		xor_Point(cX - y, cY - x);
-
-		x++;
-
-		if (d > 0)
-		{
-			y--;
-			d += 4 * (x - y) + 10;
-		}
-		else d += 4 * x + 6;
-	}
+	if (r < 8) xor_SteppedCircle(cX, cY, r, 8);
+	else if (r < 60) xor_SteppedCircle(cX, cY, r, 4);
+	else xor_SteppedCircle(cX, cY, r, 2);
 }
 
-void xor_FillCircle(unsigned int cX, unsigned int cY, unsigned char r)
+void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned char step)
 {
-	unsigned int x = 0;
-	unsigned int y = r;
-	int m = 5 - 4 * r;
+	if (cX + r < xor_clipX) return;
+	if (cX - r >= xor_clipX + xor_clipWidth) return;
+	if (cY + r < xor_clipY) return;
+	if (cY - r >= xor_clipY + xor_clipHeight) return;
 
-	while (x <= y)
+	signed int lastX = cX + r - 1;
+	signed int lastY = cY;
+
+	for (unsigned char i = 0; i < 64; i += step)
 	{
-		for (unsigned char xx = cX - y; xx <= cX + y; xx++)
-		{
-			xor_Point(xx, cY - x);
-			xor_Point(xx, cY + x);
-		}
+		const signed int newX = cX + trig_cos(i) * (signed int)r / 256;
+		const signed int newY = cY - trig_sin(i) * (signed int)r / 256;
 
-		if (m > 0 && x != y)
-		{
-			for (unsigned char xx = cX - x; xx <= cX + x; xx++)
-			{
-				xor_Point(xx, cY - y);
-				xor_Point(xx, cY + y);
-			}
+		if (i != 0) xor_Point(newX, newY); // inefficiently beating the XOR logic
+		xor_Line(lastX, lastY, newX, newY);
 
-			y--;
-			m -= 8 * y;
-		}
-
-		x++;
-		m += 8 * x + 4;
+		lastX = newX;
+		lastY = newY;
 	}
 
-	xor_HorizontalLine(cY, cX - r, cX + r);
+	xor_Line(lastX, lastY, cX + r - 1, cY);
+}
+
+void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
+{
+	const unsigned char fringeSize = r >= 96 ? 8 
+								   : r >= 40 ? 4
+								   : r >= 16 ? 2
+								   : 0;
+
+	unsigned int radiusSquared = r * r;
+
+	for (signed int yy = -1 * r; yy <= r; yy++)
+	{
+		if (cY + yy < xor_clipY) continue;
+		if (cY + yy >= xor_clipY + xor_clipHeight) continue;
+
+		unsigned char thisRadius = intsqrt(radiusSquared - yy * yy);
+		if (fringeSize > 0) thisRadius += rand() % fringeSize;
+		
+		signed int thisLeft = cX - thisRadius;
+		if (thisLeft >= xor_clipX + xor_clipWidth) continue;
+		if (thisLeft < xor_clipX) thisLeft = xor_clipX;
+
+		signed int thisRight = cX + thisRadius;
+		if (thisRight < xor_clipX) continue;
+		if (thisRight >= xor_clipX + xor_clipWidth) thisRight = xor_clipX + xor_clipWidth - 1;
+
+		xor_HorizontalLine(cY + yy, thisLeft, thisRight);
+	}
 }
 
 void xor_Char(unsigned int x, unsigned char y, char toPrint)
@@ -378,12 +379,6 @@ void xor_PrintChar(char toPrint)
 void xor_Print(char const str[])
 {
 	for (unsigned char i = 0; str[i] != '\0'; i++) xor_PrintChar(str[i]);
-}
-
-unsigned int intpow(unsigned int a, unsigned int b)
-{
-	if (b == 0) return 1;
-	else return a * intpow(a, b - 1);
 }
 
 void xor_PrintUInt8(unsigned char toPrint, unsigned char maxLength)
