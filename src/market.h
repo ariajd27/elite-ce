@@ -11,4 +11,6 @@ bool mkt_Sell(unsigned char crsPos);
 
 bool mkt_InventoryEmpty();
 
+void mkt_AdjustLegalStatus();
+
 #endif

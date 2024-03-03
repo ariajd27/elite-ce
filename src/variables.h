@@ -87,6 +87,8 @@ extern enum currentMenu_t currentMenu;
 
 extern unsigned char player_fuel;
 extern unsigned int player_money;
+extern unsigned char player_outlaw;
+extern unsigned int player_kills;
 
 extern unsigned char player_cargo_space;
 extern unsigned char player_cargo_cap;

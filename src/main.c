@@ -32,6 +32,8 @@ unsigned char menu_selOption = 0;
 
 unsigned char player_fuel;
 unsigned int player_money;
+unsigned char player_outlaw;
+unsigned int player_kills;
 
 unsigned char player_cargo_space;
 unsigned char player_cargo_cap;
@@ -128,7 +130,21 @@ void drawMenu(bool resetCrs)
 			xor_Print(" Cr");
 
 			xor_Print("\nLegal Status: ");
+			if (player_outlaw == 0) xor_Print("Clean");
+			else if (player_outlaw < 50) xor_Print("Offender");
+			else xor_Print("Fugitive");
+
 			xor_Print("\nRating: ");
+			if (player_kills < 4) xor_Print("Harmless");
+			else if (player_kills < 8) xor_Print("Mostly Harmless");
+			else if (player_kills < 16) xor_Print("Poor");
+			else if (player_kills < 32) xor_Print("Average");
+			else if (player_kills < 256) xor_Print("Above Average");
+			else if (player_kills < 512) xor_Print("Competent");
+			else if (player_kills < 2560) xor_Print("Dangerous");
+			else if (player_kills < 6400) xor_Print("Deadly");
+			else xor_Print("---- E L I T E ----");
+
 			xor_Print("\n\nEQUIPMENT:");
 
 			break;
@@ -468,11 +484,10 @@ void begin()
 
 	player_fuel = 70;
 	player_money = 1000;
+	player_outlaw = 0;
 
 	player_cargo_space = 25;
 	player_cargo_cap = 25;
-
-	flightInit();
 }
 
 bool run()
@@ -489,7 +504,7 @@ bool run()
 		while (doMenuInput()); // kicks out once it's time
 		if (toExit) break; // "quit" pressed instead of just "return"
 
-		resetPlayerCondition();
+		resetPlayerCondition(); // also handles launch from station if necessary
 		doFlight();
 	}
 

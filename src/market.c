@@ -292,3 +292,9 @@ bool mkt_InventoryEmpty()
 
 	return true;
 }
+
+void mkt_AdjustLegalStatus()
+{
+				  // 2 * (   slaves    +  narcotics  ) +   firearms
+	player_outlaw |= 2 * (inventory[3] + inventory[6]) + inventory[10];
+}

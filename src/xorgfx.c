@@ -267,11 +267,6 @@ void xor_Circle(signed int cX, signed int cY, unsigned int r)
 
 void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned char step)
 {
-	if (cX + r < xor_clipX) return;
-	if (cX - r >= xor_clipX + xor_clipWidth) return;
-	if (cY + r < xor_clipY) return;
-	if (cY - r >= xor_clipY + xor_clipHeight) return;
-
 	signed int lastX = cX + r - 1;
 	signed int lastY = cY;
 
@@ -280,7 +275,16 @@ void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned ch
 		const signed int newX = cX + trig_cos(i) * (signed int)r / 256;
 		const signed int newY = cY - trig_sin(i) * (signed int)r / 256;
 
-		if (i != 0) xor_Point(newX, newY); // inefficiently beating the XOR logic
+		if (i != 0)
+		{
+			if (newX >= (signed int)xor_clipX
+				&& newX < (signed int)(xor_clipX + xor_clipWidth)
+				&& newY >= (signed int)xor_clipY
+				&& newY < (signed int)(xor_clipY + xor_clipHeight))
+			{
+				xor_Point(newX, newY); // inefficiently beating the XOR logic
+			}
+		}
 		xor_Line(lastX, lastY, newX, newY);
 
 		lastX = newX;

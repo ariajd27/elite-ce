@@ -19,31 +19,45 @@
 #include "generation.h"
 #include "flight.h"
 #include "input.h"
+#include "market.h"
 
-unsigned char player_speed;
-signed char player_acceleration;
-signed char player_roll;
-signed char player_pitch;
+unsigned char player_speed = 0;
+signed char player_acceleration = 0;
+signed char player_roll = 0;
+signed char player_pitch = 0;
 
 enum viewDirMode_t viewDirMode;
 enum player_condition_t player_condition;
 
-void resetPlayerCondition()
+bool stationSoi;
+
+void doLaunchAnimation()
 {
-	player_condition = GREEN;
+	// TODO
 }
 
-void flightInit()
+void launch()
 {
-	player_speed = 0;
-	player_acceleration = 0;
-	player_roll = 0;
-	player_pitch = 0;
-
 	viewDirMode = FRONT;
+	mkt_AdjustLegalStatus();
 
-	NewShip(PLANET, (struct vector_t){ 0, 0, 2500 }, Matrix(256,0,0, 0,256,0, 0,0,256));
-	NewShip(BP_CORIOLIS, (struct vector_t){ 0, 0, -256 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+	player_speed = 12;
+
+	// spawn station
+	stationSoi = true;
+	NewShip(BP_CORIOLIS, (struct vector_t){ 0, 0, -256 }, Matrix(256,0,0, 0,256,0, 0,0,-256));
+
+	// spawn planet (TODO by type / with generation data)
+	NewShip(PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+
+	doLaunchAnimation();
+}
+
+void resetPlayerCondition()
+{
+	if (player_condition == DOCKED) launch();
+
+	player_condition = GREEN;
 }
 
 void drawSpaceView()
@@ -222,7 +236,7 @@ void doFlight()
 		for (unsigned char i = 0; i < numShips; i++)
 		{
 			// apply speed to other ships
-			ships[i].position.z -= player_speed / (ships[i].shipType > BP_ESCAPEPOD ? CLST_SCALE : 1);
+			ships[i].position.z -= player_speed;
 	
 			// apply pitch and roll to other ships' positions
 			signed int oldY = ships[i].position.y - (player_roll * ships[i].position.x) / 256;

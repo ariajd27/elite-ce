@@ -170,21 +170,15 @@ void ShipAsWireframe(unsigned char shipIndex)
 void ShipAsBody(unsigned char shipIndex)
 {
 	const struct int_point_t center = ProjPoint(ships[shipIndex].position);
-	const unsigned int radius = 24576 / ships[shipIndex].position.z;
+	const unsigned int radius = 24576 / (ships[shipIndex].position.z >> 8);
 	if ((ships[shipIndex].shipType & 1) == 0) xor_Circle(center.x, center.y, radius);
 	else xor_FillCircle(center.x, center.y, radius);
 }
 
 void DrawShip(unsigned char shipIndex)
 {
-	dbg_printf("drawing ship at index %d...\n", shipIndex);
-	dbg_printf("position: (%d, %d, %d)\n", 
-			ships[shipIndex].position.x, ships[shipIndex].position.y, ships[shipIndex].position.z);
-
 	if (ships[shipIndex].toExplode)
 	{
-		dbg_printf("beginning explosion for ship\n");
-
 		ships[shipIndex].laserFiring = false;
 		ships[shipIndex].toExplode = false;
 		ships[shipIndex].isExploding = true;
@@ -201,8 +195,6 @@ void DrawShip(unsigned char shipIndex)
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
-
-	dbg_printf("ship is within screen area\n");
 
 	if (ships[shipIndex].shipType > BP_ESCAPEPOD) ShipAsBody(shipIndex);
 	else if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
