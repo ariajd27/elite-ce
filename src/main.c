@@ -528,6 +528,12 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 		kb_Scan();
 
+		if (kb_IsDown(kb_KeyClear))
+		{
+			numShips = 0;
+			return 2;
+		}
+
 		if (!acceptEnter)
 		{
 			if (kb_IsDown(kb_KeyYequ))
@@ -552,12 +558,16 @@ bool run()
 {
 	begin();
 
-	if (titleScreen(BP_COBRA, "Load Saved Commander?", 21, false))
+	unsigned char tsResponse = titleScreen(BP_COBRA, "Load Saved Commander?", 21, false);
+	if (tsResponse == 2) return false; // player pressed "clear", exit the game
+
+	else if (tsResponse == 1)
 	{
 		// TODO load save
 	}
 
-	titleScreen(BP_MAMBA, "Press ENTER to begin, Commander.", 32, true);
+	// there is actually another option to exit the game here, because why not?
+	if (titleScreen(BP_MAMBA, "Press ENTER to begin, Commander.", 32, true) == 2) return false;
 
 	// core game loop. this is kinda strange, but it avoids recursion.
 	// basically, we're either in a menu, or in flight, and whenever that

@@ -6,10 +6,8 @@
 #include "xorgfx.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include <string.h>
 
 #include "variables.h"
 #include "linear.h"
@@ -22,7 +20,6 @@
 #include "market.h"
 
 unsigned char player_speed = 0;
-signed char player_acceleration = 0;
 signed char player_roll = 0;
 signed char player_pitch = 0;
 
@@ -31,7 +28,7 @@ enum player_condition_t player_condition = DOCKED;
 
 bool stationSoi = true;
 
-void flt_DoLaunchAnimation() // this is pretty damn close to the original
+void flt_DoLaunchAnimation()
 {
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
@@ -69,6 +66,10 @@ void flt_DoLaunchAnimation() // this is pretty damn close to the original
 			while(clock() - timer < TUNNEL_FRAME_TIME);
 		}
 	}
+}
+
+void flt_DoHyperspaceAnimation()
+{
 }
 
 void launch()
@@ -161,6 +162,21 @@ void drawDashboard()
 	// SOI indicator
 	if (stationSoi) gfx_Sprite(stationsoi, SOI_INDIC_POS_X, SOI_INDIC_POS_Y);
 
+	// compass
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		// we are looking for the station if within its SOI (it has spawned in);
+		// otherwise, we should just head towards the planet.
+		if (ships[i].shipType != (stationSoi ? BP_CORIOLIS : PLANET)) continue;
+
+		// draw the indicator on the compass
+		const struct vector_t compassVector = normalize(ships[i].position);
+		gfx_SetColor(compassVector.z > 0 ? COLOR_YELLOW : COLOR_GREEN);
+		gfx_FillRectangle(COMPASS_HCENTER + compassVector.x / COMPASS_SCALE, 
+						  COMPASS_VCENTER + compassVector.y / COMPASS_SCALE, 2, 1);
+		break;
+	}
+
 	// right panel
 	// speed display
 	if (player_speed == PLAYER_MAX_SPEED) gfx_SetColor(COLOR_RED);
@@ -182,13 +198,56 @@ void drawDashboard()
 	gfx_FillRectangle(DASH_HOFFSET_RIGHT + 20 + pitchBarOffset, DASH_VOFFSET + 18, 2, 3);
 }
 
+void flt_TryHyperdrive()
+{
+	if (player_speed != PLAYER_MAX_SPEED) return;
+	if (currentSeed.a == selectedSeed.a) return;
+	if (currentSeed.b == selectedSeed.b) return;
+	if (currentSeed.c == selectedSeed.c) return;
+
+	stationSoi = false;
+	gen_ChangeSystem();
+}
+
+void flt_TryInSystemJump()
+{
+	if (stationSoi) return; // definitely too close
+
+	// check for enemies nearby
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		if (ships[i].isHostile) return; // interference!
+	}
+
+	// find the planet
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		if (ships[i].shipType != PLANET) continue;
+
+		if (ships[i].position.z < 0x020000) return; // not facing planet or too close
+
+		ships[i].position.z -= 0x010000; // do the jump
+	}
+
+	// we did jump, but now we need to move the sun, too
+	// find the sun
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		if (ships[i].shipType != SUN) continue;
+
+		ships[i].position.z -= 0x010000; // move the sun
+	}
+
+	drawCycle = 0; // stimulate some enemies to spawn!
+}
+
 bool doFlightInput()
 {
 	updateKeys();
 
 	// acceleration
-	if (kb_IsDown(kb_Key2nd)) player_acceleration = 3;
-	else if (kb_IsDown(kb_KeyAlpha)) player_acceleration = -1;
+	if (kb_IsDown(kb_Key2nd) && player_speed < PLAYER_MAX_SPEED) player_speed++;
+	else if (kb_IsDown(kb_KeyAlpha) && player_speed > 0) player_speed--;
 	
 	if (!yequ) // pitch/roll controls
 	{
@@ -231,9 +290,12 @@ bool doFlightInput()
 		else if (player_roll > 0) player_roll--;	
 	}
 
+	if (clear && prevClear == 0) flt_TryHyperdrive();
+	else if (vars && prevVars == 0) flt_TryInSystemJump();
+
 	updatePrevKeys();
 
-	if (graph && prevGraph == 1) // 1 bc we are after 1 update... kinda janky, but...
+	if (graph && prevGraph == 1) // 1 bc we are after 1 update...
 	{
 		currentMenu = MAIN;
 		return false;
@@ -279,17 +341,6 @@ void flt_DoFrame(bool dashboardVisible)
 	// outer white frame
 	gfx_SetColor(COLOR_WHITE);
 	gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
-
-	// apply acceleration to speed
-	if (player_acceleration >= 0 || player_speed >= -1 * player_acceleration) 
-	{
-		player_speed += player_acceleration;
-	}
-	if (player_speed > PLAYER_MAX_SPEED)
-	{
-		player_speed = PLAYER_MAX_SPEED;
-	}
-	player_acceleration = 0;
 	
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
@@ -345,8 +396,7 @@ void flt_DoFrame(bool dashboardVisible)
 
 					player_pitch = 0;
 					player_roll = 0;
-					player_acceleration = 0;
-
+		
 					flt_DoLaunchAnimation();
 
 					return;
@@ -393,11 +443,16 @@ void flt_Death()
 
 	drawCycle = 255;
 
-	struct Ship* can = NewShip(BP_CANISTER, (struct vector_t){ 0, 0, 0 }, Matrix(256,0,0, 0,256,0, 0,0,256));
-	can->speed = player_speed / 4;
-	can->pitch = 127;
-	can->roll = 127;
-	can->isExploding = rand() % 2;
+	for (unsigned char i = 0; i < NUM_PLAYER_DEATH_CANS; i++)
+	{
+		struct Ship* can = NewShip(BP_CANISTER,
+								   (struct vector_t){ 0, 0, 0 },
+								   Matrix(256,0,0, 0,256,0, 0,0,256));
+		can->speed = player_speed / 4;
+		can->pitch = 127;
+		can->roll = 127;
+		can->isExploding = rand() % 2;
+	}
 
 	player_speed = 0;
 

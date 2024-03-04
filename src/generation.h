@@ -55,6 +55,6 @@ void gen_SelectNearestSystem(bool local);
 void gen_ResetCursorPosition(bool local);
 void gen_RedrawCursorPosition(signed int prevCrsX, signed int prevCrsY);
 
-void gen_ChangeSystem();
+bool gen_ChangeSystem();
 
 #endif

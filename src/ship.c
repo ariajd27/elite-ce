@@ -45,6 +45,8 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct ma
 	return &ships[numShips - 1];
 }
 
+// this is usually unecessary, as wiping all ships can be easily done simply by
+// setting numShips = 0 so the other ones aren't processed and are overwritten
 void RemoveShip(unsigned char shipIndex)
 {
 	for (unsigned char i = shipIndex; i < numShips; i++) ships[i] = ships[i + 1];
@@ -281,7 +283,7 @@ void RotateShip(signed int* x, signed int* y, signed char amount)
 	signed int oldX = *x;
 
 	// 1 - 1/512 is cosine of some tiny angle
-	// of which 1 / 16 is the sine
+	// of which 1 / 16 is sine (3.6 degrees)
 	if (amount > 0)
 	{
 		*x = *x * (1 - 1 / 512) + *y / 16;

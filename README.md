@@ -1,4 +1,4 @@
------ E L I T E -----
+=== E L I T E ===
 
 This is an adaptation of *Elite* (1984) for the TI-84 Plus CE.
 
@@ -11,17 +11,21 @@ Current features:
  - 3D movement
  - other ships
  - many player stats
- - inter-system jumps (backend only)
+ - inter-system jumps
  - economy simulation
  - system data, maps
  - buying/selling
  - planet and sun rendering
+ - docking and undocking
+ - start menu
+ - spawning suns, planets
+ - in-system jumps
 
 Todo:
- - docking and undocking
- - hyperjump frontend
+ - spawning stations
  - detailed planet rendering
- - spawning enemies, planets, suns, stations, etc
+ - spawning enemies
  - combat
- - start menu
  - saving/loading
+ - galactic hyperdrive
+ - optimization

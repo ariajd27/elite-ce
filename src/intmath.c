@@ -26,3 +26,8 @@ unsigned int intpow(unsigned int a, unsigned int b)
 	if (b == 0) return 1;
 	else return a * intpow(a, b - 1);
 }
+
+unsigned int intabs(signed int a)
+{
+	return a < 0 ? ~a + 1 : a;
+}

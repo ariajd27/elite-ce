@@ -3,5 +3,6 @@
 
 unsigned int intpow(unsigned int a, unsigned int b);
 unsigned int intsqrt(unsigned int a);
+unsigned int intabs(signed int a);
 
 #endif

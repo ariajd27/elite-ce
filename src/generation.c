@@ -59,28 +59,28 @@ void gen_SetSystemData(struct gen_sysData_t* out, struct gen_seed_t* in)
 
 		if (token[tknIndex] != '?')
 		{
-			(*out).name[strIndex] = token[tknIndex];
+			out->name[strIndex] = token[tknIndex];
 			strIndex++;
 		}
 		if (token[tknIndex + 1] != '?')
 		{
-			(*out).name[strIndex] = token[tknIndex + 1];
+			out->name[strIndex] = token[tknIndex + 1];
 			strIndex++;
 		}
 	}
 
-	(*out).name[strIndex] = '\0';
+	out->name[strIndex] = '\0';
 
-	(*out).government = ((*in).b & 0x0038) >> 3;
-	(*out).economy = ((*in).a & 0x0700) >> 8;
-	if ((*out).government < 2) (*out).economy |= 2;
+	out->government = (in->b & 0x0038) >> 3;
+	out->economy = (in->a & 0x0700) >> 8;
+	if (out->government < 2) out->economy |= 2;
 
-	(*out).techLevel = (~(*out).economy & 7) + (((*in).b & 0x0300) >> 8) + ((*out).government + 1) / 2;
-	(*out).population = (*out).techLevel * 4 + (*out).economy + (*out).government + 1;
-	(*out).productivity = ((~(*out).economy & 7) + 3) * ((*out).government + 4) * (*out).population * 8;
+	out->techLevel = (~out->economy & 7) + ((in->b & 0x0300) >> 8) + (out->government + 1) / 2;
+	out->population = out->techLevel * 4 + out->economy + out->government + 1;
+	out->productivity = ((~out->economy & 7) + 3) * (out->government + 4) * out->population * 8;
 
-	(*out).x = (*in).b >> 8;
-	(*out).y = (*in).a >> 8;
+	out->x = in->b >> 8;
+	out->y = in->a >> 8;
 }
 
 void gen_PrintName(const struct gen_seed_t* in, const bool lowercasify)
@@ -111,7 +111,7 @@ void gen_PrintName(const struct gen_seed_t* in, const bool lowercasify)
 
 void gen_PrintEconomy(const struct gen_sysData_t* in)
 {
-	switch ((*in).economy)
+	switch (in->economy)
 	{
 		case 0:
 		case 5:
@@ -130,13 +130,13 @@ void gen_PrintEconomy(const struct gen_sysData_t* in)
 			xor_Print("Mainly ");
 	}
 
-	if (((*in).economy & 4) == 0) xor_Print("Industrial");
+	if ((in->economy & 4) == 0) xor_Print("Industrial");
 	else xor_Print("Agricultural");
 }
 
 void gen_PrintGovernment(const struct gen_sysData_t* in)
 {
-	switch((*in).government)
+	switch(in->government)
 	{
 		case 0:
 			xor_Print("Anarchy");
@@ -166,21 +166,21 @@ void gen_PrintGovernment(const struct gen_sysData_t* in)
 
 void gen_PrintTechnology(const struct gen_sysData_t* in)
 {
-	xor_PrintUInt8((*in).techLevel + 1, 2);
+	xor_PrintUInt8(in->techLevel + 1, 2);
 }
 
 void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed_t* seed)
 {
-	xor_PrintChar('0' + (*data).population / 10);
+	xor_PrintChar('0' + data->population / 10);
 	xor_PrintChar('.');
-	xor_PrintChar('0' + (*data).population % 10);
+	xor_PrintChar('0' + data->population % 10);
 	xor_Print(" Billion\n(");
 
 	// get population species description
-	if (((*seed).c & 0x0080) == 0) xor_Print("Human Colonials");
+	if ((seed->c & 0x0080) == 0) xor_Print("Human Colonials");
 	else
 	{
-		switch ((*seed).c & 0x1c00)
+		switch (seed->c & 0x1c00)
 		{
 			case 0x0000:
 				xor_Print("Large ");
@@ -192,7 +192,7 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 				xor_Print("Small ");
 		}
 		
-		switch ((*seed).c & 0xe000)
+		switch (seed->c & 0xe000)
 		{
 			case 0x0000:
 				xor_Print("Green ");
@@ -213,7 +213,7 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 				xor_Print("Harmless ");
 		}
 
-		unsigned int x = ((*seed).a ^ (*seed).b) & 0x0700;
+		unsigned int x = (seed->a ^ seed->b) & 0x0700;
 
 		switch (x)
 		{
@@ -236,7 +236,7 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 				xor_Print("Furry ");
 		}
 
-		switch ((x + ((*seed).c & 0x0300)) & 0x0700)
+		switch ((x + (seed->c & 0x0300)) & 0x0700)
 		{
 			case 0x0000:
 				xor_Print("Rodents");
@@ -269,13 +269,13 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 
 void gen_PrintProductivity(const struct gen_sysData_t* in)
 {
-	xor_PrintUInt24((*in).productivity, 5);
+	xor_PrintUInt24(in->productivity, 5);
 	xor_Print(" M CR");
 }
 
 void gen_PrintRadius(const struct gen_seed_t* in)
 {
-	xor_PrintUInt24((((*in).c & 0x0f00) + 11 * 256) + ((*in).b >> 8), 4);
+	xor_PrintUInt24(((in->c & 0x0f00) + 11 * 256) + (in->b >> 8), 4);
 	xor_Print(" km");
 }
 
@@ -464,8 +464,10 @@ void gen_SelectNearestSystem(bool local)
 	gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 }
 
-void gen_ChangeSystem()
+bool gen_ChangeSystem()
 {
+	if (player_fuel < gen_distanceToTarget) return false; // this is the only failure condition
+
 	player_fuel -= gen_distanceToTarget;
 	currentSeed = selectedSeed;
 	thisSystemData = selectedSystemData;
@@ -473,5 +475,26 @@ void gen_ChangeSystem()
 	mkt_ResetLocalMarket();
 
 	numShips = 0;
-	// TODO place celestial bodies
+
+	// originally this rand() call should actually be determined by the carry flag
+	// after reducing the player's legal status, which means that if you never commit
+	// any crimes, planets will always appear in the same place on your screen...
+	// i think. i'm not sure. well, since I don't know how to access the carry flag
+	// anyway, i've just randomized it.
+	signed int planetZ = (((currentSeed.a & 0x0700) >> 8) + 6) << 15;
+	signed int planetX = planetZ >> 1;
+	if (rand() % 2 == 0) planetX *= -1;
+	struct Ship* planet = NewShip(PLANET,
+								  (struct vector_t){ planetX, planetX, planetZ },
+								  Matrix(256,0,0, 0,256,0, 0,0,256));
+	planet->pitch = 127;
+	planet->roll = 127;
+
+	signed int sunZ = ((currentSeed.b & 0x0700) << 8) | 0x810000;
+	signed int sunX = (currentSeed.c & 0x0300) << 8;
+	NewShip(SUN,
+		    (struct vector_t){ sunX, sunX, sunZ },
+		    Matrix(256,0,0, 0,256,0, 0,0,256));
+
+	return true;
 }
