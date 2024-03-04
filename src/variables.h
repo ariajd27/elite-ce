@@ -1,13 +1,16 @@
 #ifndef variables_define_file
 #define variables_define_file
 
+#include <stdbool.h>
 #include <graphx.h>
-
 #include "gfx/gfx.h" 
 
 #define FRAME_TIME 1600
 #define CURSOR_BLINK_TIME 10
 #define HOLD_TIME 3
+#define TUNNEL_FRAME_TIME 400
+#define TUNNEL_HOLD_TIME 24000
+#define DEATH_SCREEN_TIME 128000
 
 #define DASH_WIDTH (dashleft_width + dashcenter_width + dashright_width)
 #define DASH_HEIGHT dashleft_height
@@ -16,7 +19,10 @@
 #define DASH_HOFFSET_CENTER (DASH_HOFFSET + dashleft_width)
 #define DASH_HOFFSET_RIGHT (DASH_HOFFSET + dashleft_width + dashcenter_width)
 
-#define HEADER_Y 8
+#define SOI_INDIC_POS_X (DASH_HOFFSET + dashleft_width + 140)
+#define SOI_INDIC_POS_Y (DASH_VOFFSET + 42)
+
+#define HEADER_Y 6
 #define HEADER_DIVIDER_Y 20
 
 #define xor_clipX (DASH_HOFFSET + 1)
@@ -51,6 +57,8 @@
 #define COLOR_BLACK 0
 #define COLOR_WHITE 1
 #define COLOR_YELLOW 2
+#define COLOR_GREEN 3
+#define COLOR_RED 4
 
 #define VIEW_HCENTER (DASH_WIDTH / 2 + DASH_HOFFSET)
 #define VIEW_VCENTER (DASH_VOFFSET / 2)
@@ -63,7 +71,10 @@
 #define NUM_TRADE_GOODS 17
 
 #define PLAYER_MAX_SPEED 0x1c
-#define CLST_SCALE 20
+
+#define TTL_SHIP_START_Z 0x1000
+#define TTL_SHIP_END_Z 0x0180
+#define TTL_SHIP_ZOOM_RATE 0x80
 
 #define cmdr_name "JAMESON"
 #define cmdr_name_length 7
@@ -85,10 +96,13 @@ enum currentMenu_t {
 #define NUM_MENU_OPTIONS 6
 extern enum currentMenu_t currentMenu;
 
+extern bool player_dead;
+
 extern unsigned char player_fuel;
 extern unsigned int player_money;
 extern unsigned char player_outlaw;
 extern unsigned int player_kills;
+extern unsigned char player_energy;
 
 extern unsigned char player_cargo_space;
 extern unsigned char player_cargo_cap;

@@ -30,6 +30,8 @@ unsigned char drawCycle;
 enum currentMenu_t currentMenu;
 unsigned char menu_selOption = 0;
 
+bool player_dead;
+
 unsigned char player_fuel;
 unsigned int player_money;
 unsigned char player_outlaw;
@@ -482,6 +484,7 @@ void begin()
 	gen_ResetDistanceToTarget();
 	mkt_ResetLocalMarket();
 
+	player_dead = false;
 	player_fuel = 70;
 	player_money = 1000;
 	player_outlaw = 0;
@@ -490,9 +493,71 @@ void begin()
 	player_cargo_cap = 25;
 }
 
+unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
+{
+	numShips = 0;
+	NewShip(shipType, 
+			(struct vector_t){ 0, 0, TTL_SHIP_START_Z }, 
+			Matrix(256,0,0, 0,0,256, 0,256,0));
+	ships[0].pitch = 127;
+	ships[0].roll = 127;
+
+	unsigned char returnVal = 0;
+
+	while (true)
+	{
+		gfx_FillScreen(COLOR_BLACK);
+
+		xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
+		xor_CenterText(query, queryLength, xor_clipY + xor_clipHeight - 3 * HEADER_Y - 8);
+	
+		if (ships[0].position.z > TTL_SHIP_END_Z) ships[0].position.z -= TTL_SHIP_ZOOM_RATE;
+		MoveShip(0); // only rotation set, and no ai done, so it won't run away lol
+		DrawShip(0);
+		ships[0].orientation = orthonormalize(ships[0].orientation);
+
+		if (!acceptEnter)
+		{
+			xor_SetCursorPos(6, xor_textRows);
+			xor_Print("(N)");
+			xor_SetCursorPos(xor_textCols - 11, xor_textRows);
+			xor_Print("(Y)");
+		}
+
+		gfx_BlitBuffer();
+
+		kb_Scan();
+
+		if (!acceptEnter)
+		{
+			if (kb_IsDown(kb_KeyYequ))
+			{
+				returnVal = 0;
+				break;
+			}
+			if (kb_IsDown(kb_KeyGraph))
+			{
+				returnVal = 1;
+				break;
+			}
+		}
+		else if (kb_IsDown(kb_KeyEnter)) break;
+	}
+
+	numShips = 0;
+	return acceptEnter ? 1 : returnVal;
+}
+
 bool run()
 {
-	begin();	
+	begin();
+
+	if (titleScreen(BP_COBRA, "Load Saved Commander?", 21, false))
+	{
+		// TODO load save
+	}
+
+	titleScreen(BP_MAMBA, "Press ENTER to begin, Commander.", 32, true);
 
 	// core game loop. this is kinda strange, but it avoids recursion.
 	// basically, we're either in a menu, or in flight, and whenever that
@@ -503,12 +568,14 @@ bool run()
 		drawMenu(true);
 		while (doMenuInput()); // kicks out once it's time
 		if (toExit) break; // "quit" pressed instead of just "return"
+		toExit = false;
 
 		resetPlayerCondition(); // also handles launch from station if necessary
 		doFlight();
+		if (player_dead) break;
 	}
 
-	return false;
+	return player_dead;
 }
 
 int main(void)

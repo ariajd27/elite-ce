@@ -26,14 +26,49 @@ signed char player_acceleration = 0;
 signed char player_roll = 0;
 signed char player_pitch = 0;
 
-enum viewDirMode_t viewDirMode;
-enum player_condition_t player_condition;
+enum viewDirMode_t viewDirMode = FRONT;
+enum player_condition_t player_condition = DOCKED;
 
-bool stationSoi;
+bool stationSoi = true;
 
-void doLaunchAnimation()
+void flt_DoLaunchAnimation() // this is pretty damn close to the original
 {
-	// TODO
+	gfx_SetColor(COLOR_BLACK);
+	gfx_FillRectangle(xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+	gfx_SetColor(COLOR_WHITE);
+	gfx_Rectangle(xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+	gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+
+	clock_t timer;
+
+	for (unsigned int inner = 8; inner < 16; inner++)
+	{
+		for (unsigned int current = inner; current <= 160; current <<= 1)
+		{
+			timer = clock();
+
+			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, 8);	
+			gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+
+			while(clock() - timer < TUNNEL_FRAME_TIME);
+		}
+	}
+
+	while (clock() - timer < TUNNEL_HOLD_TIME);
+
+	// do the same stuff again to delete it
+	for (unsigned int inner = 8; inner < 16; inner++)
+	{
+		for (unsigned int current = inner; current <= 160; current <<= 1)
+		{
+			timer = clock();
+
+			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, 8);	
+			gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
+
+			while(clock() - timer < TUNNEL_FRAME_TIME);
+		}
+	}
 }
 
 void launch()
@@ -50,7 +85,7 @@ void launch()
 	// spawn planet (TODO by type / with generation data)
 	NewShip(PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 
-	doLaunchAnimation();
+	flt_DoLaunchAnimation();
 }
 
 void resetPlayerCondition()
@@ -116,19 +151,25 @@ void drawDashboard()
 			dy -= (y + dy) - (GFX_LCD_HEIGHT - 3);
 		}
 
-		gfx_SetColor(COLOR_YELLOW);
+		if (ships[i].isHostile) gfx_SetColor(COLOR_YELLOW);
+		else gfx_SetColor(COLOR_GREEN);
 		gfx_Line(x, y, x, y + dy);
 		gfx_SetPixel(x, y + dy);
 		gfx_SetPixel(x - 1, y + dy);
 	}
 
+	// SOI indicator
+	if (stationSoi) gfx_Sprite(stationsoi, SOI_INDIC_POS_X, SOI_INDIC_POS_Y);
+
 	// right panel
 	// speed display
-	gfx_SetColor(COLOR_YELLOW);
+	if (player_speed == PLAYER_MAX_SPEED) gfx_SetColor(COLOR_RED);
+	else gfx_SetColor(COLOR_YELLOW);
 	unsigned char const speedBarLength = 32 * player_speed / PLAYER_MAX_SPEED;
 	gfx_FillRectangle(DASH_HOFFSET_RIGHT + 4, DASH_VOFFSET + 2, speedBarLength, 3);
 
 	// roll display
+	gfx_SetColor(COLOR_YELLOW);
 	signed char rollBarOffset = player_roll / 2;
 	if (rollBarOffset == 16) rollBarOffset--;
 	else if (rollBarOffset == -16) rollBarOffset++;
@@ -200,69 +241,178 @@ bool doFlightInput()
 	else return true;
 }
 
+unsigned char flt_CheckForDocking(unsigned char stationIndex)
+{
+	if (player_speed == 0)
+		return 1;
+	if (ships[stationIndex].position.z < 0) 
+		return 1;
+
+	bool successful = true;
+
+	if (ships[stationIndex].orientation.a[8] < 115) 
+		successful = false;
+	if (ships[stationIndex].position.z < 119) 
+		successful = false;
+	if (ships[stationIndex].orientation.a[3] < 107 && ships[stationIndex].orientation.a[3] > -107) 
+		successful = false;
+	if (ships[stationIndex].isHostile)
+		successful = false;
+
+	if (successful) return 0;
+	
+	if (player_speed <= 5)
+	{
+		player_speed = 0;
+		return 1;
+	}
+	
+	flt_Death();
+	return 2;
+}
+
+void flt_DoFrame(bool dashboardVisible)
+{
+	// black background
+	gfx_FillScreen(COLOR_BLACK);
+
+	// outer white frame
+	gfx_SetColor(COLOR_WHITE);
+	gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
+
+	// apply acceleration to speed
+	if (player_acceleration >= 0 || player_speed >= -1 * player_acceleration) 
+	{
+		player_speed += player_acceleration;
+	}
+	if (player_speed > PLAYER_MAX_SPEED)
+	{
+		player_speed = PLAYER_MAX_SPEED;
+	}
+	player_acceleration = 0;
+	
+	// tidy vectors for each ship -- one ship per cycle
+	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
+
+	// do ai -- two ships per cycle
+	DoAI(drawCycle % MAX_SHIPS);
+	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
+	
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		// apply speed to other ships
+		ships[i].position.z -= player_speed;
+	
+		// apply pitch and roll to other ships' positions
+		signed int oldY = ships[i].position.y - (player_roll * ships[i].position.x) / 256;
+		ships[i].position.z += (player_pitch * oldY) / 256;
+		ships[i].position.y = oldY - (player_pitch * ships[i].position.z) / 256;
+		ships[i].position.x += (player_roll * ships[i].position.y) / 256;
+	
+		// apply pitch and roll to other ships' orientations
+		for (unsigned char j = 0; j < 9; j += 3)
+		{
+			ships[i].orientation.a[j + 1] -= player_roll * ships[i].orientation.a[j + 0] / 256;
+			ships[i].orientation.a[j + 0] += player_roll * ships[i].orientation.a[j + 1] / 256;
+			ships[i].orientation.a[j + 1] -= player_pitch * ships[i].orientation.a[j + 2] / 256;
+			ships[i].orientation.a[j + 2] += player_pitch * ships[i].orientation.a[j + 1] / 256;
+		}
+	
+		// let the ship move itself
+		MoveShip(i);
+
+		// check if we are close enough to dock/collide/grab
+		if (ships[i].position.x > 191) continue;
+		if (ships[i].position.x < -191) continue;
+		if (ships[i].position.y > 191) continue;
+		if (ships[i].position.y < -191) continue;
+		if (ships[i].position.z > 191) continue;
+		if (ships[i].position.z < -191) continue;
+
+		// docking? break out of flight loop if we succeed
+		if (ships[i].shipType == BP_CORIOLIS)
+		{
+			unsigned char dockOutcome = flt_CheckForDocking(i); // 0 = success
+																// 1 = failure
+																// 2 = death
+			switch (dockOutcome)
+			{
+				case 0:
+
+					player_condition = DOCKED;
+					currentMenu = STATUS;
+					numShips = 0;
+
+					player_pitch = 0;
+					player_roll = 0;
+					player_acceleration = 0;
+
+					flt_DoLaunchAnimation();
+
+					return;
+
+				case 2:
+
+					player_dead = true;
+
+					return;
+
+				default: break; // if no dock, but no death, just keep going
+			}
+		}
+	}
+
+	drawSpaceView();
+	if (dashboardVisible) drawDashboard();
+}
+
 void doFlight()
 {
 	while (doFlightInput())
 	{
 		clock_t frameTimer = clock();
 
-		// black background
-		// gfx_SetColor(COLOR_BLACK);
-		// gfx_FillRectangle(0, 0, GFX_LCD_WIDTH, GFX_LCD_HEIGHT);	
-		gfx_FillScreen(COLOR_BLACK);
+		flt_DoFrame(true);
+		if (player_condition == DOCKED) break;
+		if (player_dead) break;
+	
+		while (clock() - frameTimer < FRAME_TIME);
 
-		// outer white frame
-		gfx_SetColor(COLOR_WHITE);
-		gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
+		gfx_BlitBuffer();
 
-		// apply acceleration to speed
-		if (player_acceleration >= 0 || player_speed >= -1 * player_acceleration) 
-		{
-			player_speed += player_acceleration;
-		}
-		if (player_speed > PLAYER_MAX_SPEED)
-		{
-			player_speed = PLAYER_MAX_SPEED;
-		}
-		player_acceleration = 0;
-	
-		// tidy vectors for each ship -- one ship per cycle
-		ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
-
-		// do ai -- two ships per cycle
-		DoAI(drawCycle % MAX_SHIPS);
-		DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
-	
-		for (unsigned char i = 0; i < numShips; i++)
-		{
-			// apply speed to other ships
-			ships[i].position.z -= player_speed;
-	
-			// apply pitch and roll to other ships' positions
-			signed int oldY = ships[i].position.y - (player_roll * ships[i].position.x) / 256;
-			ships[i].position.z += (player_pitch * oldY) / 256;
-			ships[i].position.y = oldY - (player_pitch * ships[i].position.z) / 256;
-			ships[i].position.x += (player_roll * ships[i].position.y) / 256;
-	
-			// apply pitch and roll to other ships' orientations
-			for (unsigned char j = 0; j < 9; j += 3)
-			{
-				ships[i].orientation.a[j + 1] -= player_roll * ships[i].orientation.a[j + 0] / 256;
-				ships[i].orientation.a[j + 0] += player_roll * ships[i].orientation.a[j + 1] / 256;
-				ships[i].orientation.a[j + 1] -= player_pitch * ships[i].orientation.a[j + 2] / 256;
-				ships[i].orientation.a[j + 2] += player_pitch * ships[i].orientation.a[j + 1] / 256;
-			}
-	
-			MoveShip(i);
-		}
-
-		drawSpaceView();
 		drawCycle++;
+	}
+}
 
-		drawDashboard();
+void flt_Death()
+{
+	// we should have gotten here from the do damage routine,
+	// but that could probably be called in lots of different
+	// places... they all need to accomodate the possibility
+	// of a game over
+
+	drawCycle = 255;
+
+	struct Ship* can = NewShip(BP_CANISTER, (struct vector_t){ 0, 0, 0 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+	can->speed = player_speed / 4;
+	can->pitch = 127;
+	can->roll = 127;
+	can->isExploding = rand() % 2;
+
+	player_speed = 0;
+
+	clock_t timer = clock();
+	while (clock() - timer < DEATH_SCREEN_TIME)
+	{
+		clock_t frameTimer = clock();
+
+		flt_DoFrame(false);
+		xor_CenterText("GAME OVER", 9, VIEW_VCENTER);
 
 		while (clock() - frameTimer < FRAME_TIME);
 
 		gfx_BlitBuffer();
 	}
+
+	// TODO find a way to kick all the way back out of the game
 }

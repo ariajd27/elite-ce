@@ -22,4 +22,6 @@ void drawSpaceView();
 void drawDashboard();
 void doFlight();
 
+void flt_Death();
+
 #endif

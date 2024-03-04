@@ -7,7 +7,7 @@ It is very much in alpha right now.
 Current features:
  - procedural galaxy generation
  - menus
- - 3D graphics
+ - wireframe and point rendering
  - 3D movement
  - other ships
  - many player stats
@@ -15,11 +15,12 @@ Current features:
  - economy simulation
  - system data, maps
  - buying/selling
+ - planet and sun rendering
 
 Todo:
  - docking and undocking
  - hyperjump frontend
- - planet and sun rendering
+ - detailed planet rendering
  - spawning enemies, planets, suns, stations, etc
  - combat
  - start menu

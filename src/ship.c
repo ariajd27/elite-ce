@@ -76,15 +76,11 @@ void ShipAsPoint(unsigned char shipIndex)
 	screenPoint.x -= (signed int)SHPPT_WIDTH / 2;
 	screenPoint.y -= (signed int)SHPPT_HEIGHT / 2;
 
-	dbg_printf("drawing ship as point at (%d, %d)... ", screenPoint.x, screenPoint.y);
-
 	xor_FillRectangle(screenPoint.x, screenPoint.y, SHPPT_WIDTH, SHPPT_HEIGHT);
 }
 
 void ShipAsWireframe(unsigned char shipIndex)
 {
-	dbg_printf("drawing ship as wireframe...\n");
-
 	unsigned char distance = ships[shipIndex].position.z >> 8;
 	if (distance > 31) distance = 31;
 
@@ -222,23 +218,36 @@ void DoAI(unsigned char shipIndex)
 	}
 
 	// target vector goes away from player by default
-	struct vector_t goVector = ships[shipIndex].position;
+	struct vector_t goVector;
+	if (ships[shipIndex].shipType != BP_ESCAPEPOD)
+	{
+		goVector = ships[shipIndex].position;
+	}
+	else
+	{
+		unsigned char i;
+		for (i = 0; ships[i].shipType != PLANET; i++);
+		goVector = sub(ships[i].position, ships[shipIndex].position);
+	}
+
 	signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
 
 	// if not too close and feeling aggressive, set target towards player instead
-	if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)
+	if (ships[shipIndex].isHostile == true)
 	{
-		unsigned char const a = rand() % 128;
-		if (a < ships[shipIndex].aggro)
+		if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)
 		{
-			goVector = mul(goVector, -1);
-			goAlign *= -1;
+			unsigned char const a = rand() % 128;
+			if (a < ships[shipIndex].aggro)
+			{
+				goVector = mul(goVector, -1);
+				goAlign *= -1;
+			}
 		}
 	}
 
 	// pitch is simple
 	ships[shipIndex].pitch = -3 * dot(goVector, getRow(ships[shipIndex].orientation, 1));
-	dbg_printf("pitch set: %d\n", ships[shipIndex].pitch);
 
 	// roll is not... skip roll processing if already in a roll
 	if ((ships[shipIndex].roll < 0 ? -1 * ships[shipIndex].roll : ships[shipIndex].roll) < 16)
