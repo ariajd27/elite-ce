@@ -18,7 +18,7 @@ const struct mkt_tradeGood_t {
 	{  19, -2, 't',   6, 0x01 },
 	{  20, -1, 't',  10, 0x03 },
 	{  65, -3, 't',   2, 0x07 },
-	{  40, -5, 't', 226, 0x1f },
+	{  40, 11, 't', 226, 0x07 }, // modified... explanation below...
 	{  83, -5, 't', 251, 0x0f },
 	{ 196,  8, 't',  54, 0x03 },
 	{ 235, 29, 't',   8, 0x78 },
@@ -38,12 +38,12 @@ const char productNames[NUM_TRADE_GOODS][13] = {
 	"Food",
 	"Textiles",
 	"Radioactives",
-	"Slaves",
-	"Liquor/Wines",
-	"Luxuries",
-	"Narcotics",
-	"Computers",
-	"Machinery",
+	"Chemicals", 		// <- these are slaves in the original. it took a lot of deliberation,
+	"Liquor/Wines",		// but yes, i decided to remove the slave trade. ultimately, it's
+	"Luxuries",			// just too *weird* to distribute a game *in 2024* where the player
+	"Narcotics",		// can be a *slave trader* and be rewarded for it! like, *seriously?*
+	"Computers",		// i don't think they add nearly enough to *Elite* to justify releasing
+	"Machinery",		// a slave trade simulator where human beings are measured by the ton.
 	"Alloys",
 	"Firearms",
 	"Furs",
@@ -295,6 +295,6 @@ bool mkt_InventoryEmpty()
 
 void mkt_AdjustLegalStatus()
 {
-				  // 2 * (   slaves    +  narcotics  ) +   firearms
-	player_outlaw |= 2 * (inventory[3] + inventory[6]) + inventory[10];
+				  // 2 *   narcotics  +   firearms
+	player_outlaw |= 2 * inventory[6] + inventory[10];
 }
