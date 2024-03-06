@@ -5,6 +5,8 @@
 #include <graphx.h>
 #include "gfx/gfx.h" 
 
+#define SAVE_VAR_NAME "ELITESAV"
+
 #define FRAME_TIME 1600
 #define CURSOR_BLINK_TIME 10
 #define HOLD_TIME 3

@@ -11,7 +11,7 @@
 struct Ship ships[MAX_SHIPS];
 unsigned char numShips = 0;
 
-struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct matrix_t orientation)
+struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct intmatrix_t orientation)
 {
 	ships[numShips].shipType = shipType;
 	ships[numShips].position.x = position.x;
@@ -85,7 +85,7 @@ void ShipAsWireframe(unsigned char shipIndex)
 	unsigned char distance = ships[shipIndex].position.z >> 8;
 	if (distance > 31) distance = 31;
 
-	struct matrix_t transformation = transpose(ships[shipIndex].orientation);
+	struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
 
 	// backface culling
 	unsigned int faceVisible;

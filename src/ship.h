@@ -15,7 +15,7 @@ struct Ship
 {
 	unsigned char shipType;
 	struct vector_t position;
-	struct matrix_t orientation;
+	struct intmatrix_t orientation;
 
 	bool isHostile;
 	unsigned char aggro;
@@ -42,7 +42,7 @@ struct Ship
 extern struct Ship ships[MAX_SHIPS];
 extern unsigned char numShips;
 
-struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct matrix_t orientation);
+struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct intmatrix_t orientation);
 void RemoveShip(unsigned char shipIndex);
 
 struct int_point_t

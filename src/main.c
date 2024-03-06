@@ -1,19 +1,16 @@
 #include <graphx.h>
 #include <keypadc.h>
 #include <sys/rtc.h>
-
-#include "gfx/gfx.h"
-
-#include "xorgfx.h"
-
+#include <fileioc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include <string.h>
 
+#include "gfx/gfx.h"
+#include "xorgfx.h"
 #include "variables.h"
-
 #include "ship.h"
 #include "ship_data.h"
 #include "stardust.h"
@@ -22,7 +19,7 @@
 #include "flight.h"
 #include "input.h"
 
-#include <debug.h>
+unsigned char saveHandle;
 
 bool toExit = false;
 unsigned char drawCycle;
@@ -101,8 +98,8 @@ void drawMenu(bool resetCrs)
 				xor_Print("Quit");
 			}
 
-			// xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
-			// 		29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
+			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
+					29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
 
 			break;
 			
@@ -199,8 +196,8 @@ void drawMenu(bool resetCrs)
 			xor_CenterTextOffset(thisSystemData.name, strlen(thisSystemData.name), HEADER_Y, 12);
 			xor_CenterTextOffset("MARKET LINK", 11, HEADER_Y, -1 - strlen(thisSystemData.name));
 			mkt_PrintMarketTable();
-			// xor_FillRectangle(DASH_HOFFSET + 5, 
-			// 		HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+			xor_FillRectangle(DASH_HOFFSET + 5, 
+					HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 
 			break;
 
@@ -212,8 +209,8 @@ void drawMenu(bool resetCrs)
 
 			if (player_condition == DOCKED && !mkt_InventoryEmpty())
 			{
-				// xor_FillRectangle(DASH_HOFFSET + 5, 
-				//		HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+				xor_FillRectangle(DASH_HOFFSET + 5, 
+						HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 			}
 
 			break;
@@ -264,7 +261,7 @@ bool doMenuInput()
 				if (menu_selOption >= NUM_MENU_OPTIONS) menu_selOption = 0;
 			}
 
-			if (enter && prevEnter == 0)
+			if ((enter && prevEnter == 0) || (graph && prevGraph == 0))
 			{
 				switch (menu_selOption)
 				{
@@ -557,20 +554,44 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 	return acceptEnter ? 1 : returnVal;
 }
 
+void loadGame()
+{
+}
+
+void saveGame()
+{
+}
+
 bool run()
 {
+	// load the gamestate for the Jameson default save
+	// this will be overwritten if a save is detected and selected
 	begin();
 
-	unsigned char tsResponse = titleScreen(BP_COBRA, "Load Saved Commander?", 21, false);
-	if (tsResponse == 2) return false; // player pressed "clear", exit the game
+	// here is the save game loading logic. first, we try to open the save
+	saveHandle = ti_Open(SAVE_VAR_NAME, "r");
 
-	else if (tsResponse == 1)
+	// if it's an error, there's no save, so we won't give the user the option
+	// to load a game at all
+	if (saveHandle != 0)
 	{
-		// TODO load save
-	}
+		unsigned char tsResponse = titleScreen(BP_COBRA, "Load Saved Commander?", 21, false);
 
-	// there is actually another option to exit the game here, because why not?
-	if (titleScreen(BP_MAMBA, "Press ENTER to begin, Commander.", 32, true) == 2) return false;
+		if (tsResponse == 2) return false; // player pressed "clear", exit the game
+
+		else if (tsResponse == 1) loadGame(); // TODO
+
+		// otherwise, the player didn't want to load a saved game, so do nothing--
+		// the Jameson default save is already loaded. this is the same outcome as
+		// if no save had been found in the first place
+	}
+	
+	// honestly, i'm not sure if ti_Close(0) does anything, but the documentation
+	// says to always call ti_Close() after ti_Open(), so here we are
+	ti_Close(saveHandle);
+
+	// this is the title screen that is always shown
+	if (titleScreen(BP_MAMBA, "Press ENTER, CMDR.", 18, true) == 2) return false;
 
 	// core game loop. this is kinda strange, but it avoids recursion.
 	// basically, we're either in a menu, or in flight, and whenever that
@@ -578,21 +599,44 @@ bool run()
 	// store a state! instead, we just go menu, flight, menu, flight, etc.
 	while (true)
 	{
-		drawMenu(true);
-		while (doMenuInput()); // kicks out once it's time
-		if (toExit) break; // "quit" pressed instead of just "return"
-		toExit = false;
+		// part 1: menus!
+		drawMenu(true); // draw the first menu
+		
+		while (doMenuInput()); // draws new menus as necessary and
+							   // kicks out once it's time
 
+		if (toExit) break; // "quit" pressed instead of just "return"
+
+		// part 2: physics!
 		resetPlayerCondition(); // also handles launch from station if necessary
-		doFlight();
-		if (player_dead) break;
+		
+		doFlight(); // this is a loop that will exit when a menu is opened
+					// or when the player dies
+		
+		if (player_dead) break; // the restarting behavior is handled below
 	}
 
+	// we save the game if and only if the player selects "Save & Quit", which is
+	// only an option if the player is docked. it is also the only way to quit the
+	// game if the player is docked. therefore, if we exit the loop while the player
+	// is docked, the player has pressed "Save & Quit", and vice versa. so that's
+	// what we check.
+	if (player_condition == DOCKED) saveGame(); // TODO
+
+	// similar logic to above. the only time we can get here besides the player
+	// having quit the game is the "if (player_dead) break;" statement in the loop
+	// above. so if the player is dead, we should return true so that the player
+	// has a chance to restart. otherwise, the player has already selected "Quit",
+	// so return false to break out of the loop in main();
 	return player_dead;
 }
 
+// here is the actual entry point for the program
 int main(void)
 {
+	// random variables will be different between runs. anything
+	// that needs to be the same should be generated from system
+	// seeds, and all of that is in generation.c (not here)
 	srand(rtc_Time());
 
 	// graphics initialization
@@ -600,7 +644,11 @@ int main(void)
 	gfx_SetDrawBuffer();
 	gfx_SetPalette(&global_palette, sizeof_global_palette, 0);
 
-	// run the game until the user exits
+	// run the game until the user exits -- this means we can keep
+	// looping back to the title screen and letting the user restart
+	// until they actually want to exit. it also means that anything
+	// run() calls that asks for user input needs to be able to get
+	// run() to return false to break out of this loop.
 	while (run());
 
 	// exit game

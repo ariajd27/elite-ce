@@ -24,19 +24,19 @@ struct vector_t proj(struct vector_t a, struct vector_t b);
 unsigned int magnitude(struct vector_t a);
 struct vector_t normalize(struct vector_t a);
 
-struct matrix_t
+struct intmatrix_t
 {
 	signed int a[9];
 };
 
-struct matrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
+struct intmatrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
 		signed int a4, signed int a5, signed int a6, signed int a7, signed int a8);
-struct vector_t getCol(struct matrix_t a, unsigned char b);
-struct vector_t getRow(struct matrix_t a, unsigned char b);
+struct vector_t getCol(struct intmatrix_t a, unsigned char b);
+struct vector_t getRow(struct intmatrix_t a, unsigned char b);
 
-struct matrix_t sMul(struct matrix_t a, signed int b);
-struct vector_t vMul(struct matrix_t a, struct vector_t b);
-struct matrix_t transpose(struct matrix_t a);
-struct matrix_t orthonormalize(struct matrix_t a);
+struct intmatrix_t sMul(struct intmatrix_t a, signed int b);
+struct vector_t vMul(struct intmatrix_t a, struct vector_t b);
+struct intmatrix_t transpose(struct intmatrix_t a);
+struct intmatrix_t orthonormalize(struct intmatrix_t a);
 
 #endif

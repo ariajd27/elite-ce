@@ -108,10 +108,10 @@ struct vector_t normalize(struct vector_t a)
 	return newVector;
 }
 
-struct matrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
+struct intmatrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
 		signed int a4, signed int a5, signed int a6, signed int a7, signed int a8)
 {
-	struct matrix_t newMatrix;
+	struct intmatrix_t newMatrix;
 	newMatrix.a[0] = a0;
 	newMatrix.a[1] = a1;
 	newMatrix.a[2] = a2;
@@ -124,7 +124,7 @@ struct matrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a
 	return newMatrix;
 }
 
-struct vector_t getCol(struct matrix_t a, unsigned char b)
+struct vector_t getCol(struct intmatrix_t a, unsigned char b)
 {
 	struct vector_t newVector;
 	newVector.x = a.a[0 + b];
@@ -133,7 +133,7 @@ struct vector_t getCol(struct matrix_t a, unsigned char b)
 	return newVector;
 }
 
-struct vector_t getRow(struct matrix_t a, unsigned char b)
+struct vector_t getRow(struct intmatrix_t a, unsigned char b)
 {
 	struct vector_t newVector;
 	newVector.x = a.a[3 * b + 0];
@@ -142,14 +142,14 @@ struct vector_t getRow(struct matrix_t a, unsigned char b)
 	return newVector;
 }
 
-struct matrix_t sMul(struct matrix_t a, signed int b)
+struct intmatrix_t sMul(struct intmatrix_t a, signed int b)
 {
-	struct matrix_t newMatrix;
+	struct intmatrix_t newMatrix;
 	for (unsigned char i = 0; i < 9; i++) newMatrix.a[i] = a.a[i] * b;
 	return newMatrix;
 }
 
-struct vector_t vMul(struct matrix_t a, struct vector_t b)
+struct vector_t vMul(struct intmatrix_t a, struct vector_t b)
 {
 	struct vector_t newVector;
 	newVector.x = (a.a[0] * b.x + a.a[1] * b.y + a.a[2] * b.z) / 256;
@@ -158,9 +158,9 @@ struct vector_t vMul(struct matrix_t a, struct vector_t b)
 	return newVector;
 }
 
-struct matrix_t transpose(struct matrix_t a)
+struct intmatrix_t transpose(struct intmatrix_t a)
 {
-	struct matrix_t newMatrix;
+	struct intmatrix_t newMatrix;
 	newMatrix.a[0] = a.a[0];
 	newMatrix.a[1] = a.a[3];
 	newMatrix.a[2] = a.a[6];
@@ -173,7 +173,7 @@ struct matrix_t transpose(struct matrix_t a)
 	return newMatrix;
 }
 
-struct matrix_t orthonormalize(struct matrix_t a)
+struct intmatrix_t orthonormalize(struct intmatrix_t a)
 {
 	// modified from original algorithm
 	struct vector_t u1 = getRow(a, 2);
@@ -186,7 +186,7 @@ struct matrix_t orthonormalize(struct matrix_t a)
 	// now to save a bunch of time
 	struct vector_t u3 = cross(u1, u2); // magnitude already equals 1 x 1 = 1... that was easy
 
-	struct matrix_t output = Matrix(u3.x, u3.y, u3.z, u2.x, u2.y, u2.z, u1.x, u1.y, u1.z);
+	struct intmatrix_t output = Matrix(u3.x, u3.y, u3.z, u2.x, u2.y, u2.z, u1.x, u1.y, u1.z);
 
 	return output;
 }
