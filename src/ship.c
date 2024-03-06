@@ -13,8 +13,6 @@ unsigned char numShips = 0;
 
 struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct matrix_t orientation)
 {
-	dbg_printf("creating ship type %d at index %d and position (%d, %d, %d)\n", shipType, numShips, position.x, position.y, position.z);
-
 	ships[numShips].shipType = shipType;
 	ships[numShips].position.x = position.x;
 	ships[numShips].position.y = position.y;
@@ -126,9 +124,10 @@ void ShipAsWireframe(unsigned char shipIndex)
 	struct {
 		bool calculated;
 		struct int_point_t screenPosition;
-	} vertices[28];
-
-	for (unsigned char i = 0; i < ships[shipIndex].numVertices; i++) vertices[i].calculated = false;
+	} vertices[28] = {
+		false,
+		(struct int_point_t){ 0, 0 }
+	};
 
 	for (unsigned char i = 0; i < ships[shipIndex].numEdges; i++)
 	{

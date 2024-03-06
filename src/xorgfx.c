@@ -220,7 +220,7 @@ void xor_Rectangle(unsigned int x, unsigned char y, unsigned int width, unsigned
 	xor_VerticalLine(x + width, y + 1, y + height - 1);
 }
 
-void xor_FillRectangle(unsigned int x, unsigned char y, unsigned int width, unsigned char height)
+void xor_FillRectangle(signed int x, signed int y, unsigned int width, unsigned char height)
 {
 	if (x < xor_clipX)
 	{

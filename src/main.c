@@ -63,6 +63,7 @@ void printPlayerCondition()
 
 void drawMenu(bool resetCrs)
 {
+	// frame, background
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(0, 0, GFX_LCD_WIDTH, GFX_LCD_HEIGHT);
 	drawDashboard();
@@ -70,8 +71,10 @@ void drawMenu(bool resetCrs)
 	gfx_Rectangle(DASH_HOFFSET, 0, DASH_WIDTH, DASH_VOFFSET);
 	xor_HorizontalLine(HEADER_DIVIDER_Y, DASH_HOFFSET + 1, DASH_HOFFSET + DASH_WIDTH - 2);
 
+	// reset the position of the cursor if we switch menus
 	if (resetCrs) menu_selOption = 0;
 
+	// content, depends on which menu we are in
 	switch (currentMenu)
 	{
 		case MAIN:
@@ -98,8 +101,8 @@ void drawMenu(bool resetCrs)
 				xor_Print("Quit");
 			}
 
-			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
-					29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
+			// xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
+			// 		29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
 
 			break;
 			
@@ -196,8 +199,8 @@ void drawMenu(bool resetCrs)
 			xor_CenterTextOffset(thisSystemData.name, strlen(thisSystemData.name), HEADER_Y, 12);
 			xor_CenterTextOffset("MARKET LINK", 11, HEADER_Y, -1 - strlen(thisSystemData.name));
 			mkt_PrintMarketTable();
-			xor_FillRectangle(DASH_HOFFSET + 5, 
-					HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+			// xor_FillRectangle(DASH_HOFFSET + 5, 
+			// 		HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 
 			break;
 
@@ -209,8 +212,8 @@ void drawMenu(bool resetCrs)
 
 			if (player_condition == DOCKED && !mkt_InventoryEmpty())
 			{
-				xor_FillRectangle(DASH_HOFFSET + 5, 
-						HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+				// xor_FillRectangle(DASH_HOFFSET + 5, 
+				//		HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 			}
 
 			break;

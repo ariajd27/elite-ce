@@ -309,10 +309,9 @@ bool doFlightInput()
 	else return true;
 }
 
+// this will only be called if we know that there is no station already
 void flt_TrySpawnStation()
 {
-	dbg_printf("top of station spawn check\n");
-
 	// find the planet
 	unsigned char planetIndex;
 	for (planetIndex = 0; ships[planetIndex].shipType != PLANET; planetIndex++);
@@ -326,14 +325,10 @@ void flt_TrySpawnStation()
 	if (intabs(stationPos.y) > 49152) return;
 	if (intabs(stationPos.z) > 49152) return;
 
-	dbg_printf("station spawn branch taken\n");
-
 	// spawn the station
 	struct Ship* station = NewShip(BP_CORIOLIS,
 								   stationPos,
 								   ships[planetIndex].orientation);
-
-	dbg_printf("station spawned\n");
 
 	// flip the nose vector so the slot faces the planet
 	station->orientation.a[6] *= -1;
@@ -344,10 +339,9 @@ void flt_TrySpawnStation()
 	station->roll = 127;
 
 	stationSoi = true;
-
-	dbg_printf("bottom of station spawn check\n");
 }
 
+// these checks are pretty damn generous, but that's probably good for testing
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
 	if (player_speed == 0)
@@ -380,8 +374,6 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 
 void flt_DoFrame(bool dashboardVisible)
 {
-	dbg_printf("top of frame method\n");
-
 	// black background
 	gfx_FillScreen(COLOR_BLACK);
 
@@ -392,19 +384,13 @@ void flt_DoFrame(bool dashboardVisible)
 	// check if we have entered the station soi
 	if (!stationSoi/* && drawCycle % 128 == 0*/) flt_TrySpawnStation();
 
-	dbg_printf("before tidying\n");
-
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
-
-	dbg_printf("before ai\n");
 
 	// do ai -- two ships per cycle
 	DoAI(drawCycle % MAX_SHIPS);
 	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
 
-	dbg_printf("before ship loop\n");
-	
 	for (unsigned char i = 0; i < numShips; i++)
 	{
 		// apply speed to other ships
@@ -468,12 +454,9 @@ void flt_DoFrame(bool dashboardVisible)
 		}
 	}
 
-	dbg_printf("before drawing frame\n");
-
 	drawSpaceView();
-	if (dashboardVisible) drawDashboard();
 
-	dbg_printf("bottom of frame method\n");
+	if (dashboardVisible) drawDashboard();
 }
 
 void doFlight()
