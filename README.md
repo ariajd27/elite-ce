@@ -2,7 +2,7 @@
 
 This is an adaptation of *Elite* (1984) for the TI-84 Plus CE.
 
-It is very much in alpha right now.
+It is very much in alpha right now. Bugs exist that may cause the loss of user data. Please do not run this code on a physical calculator without taking appropriate precautions.
 
 Current features:
  - procedural galaxy generation
@@ -20,10 +20,11 @@ Current features:
  - start menu
  - spawning suns, planets
  - in-system jumps
-
-Todo:
  - spawning stations
  - detailed planet rendering
+
+Todo:
+ - upgrades & refueling
  - spawning enemies
  - combat
  - saving/loading

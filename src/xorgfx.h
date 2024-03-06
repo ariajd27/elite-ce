@@ -20,6 +20,7 @@ void xor_FillRectangle(unsigned int x, unsigned char y, unsigned int width, unsi
 void xor_Circle(signed int cX, signed int cY, unsigned int r);
 void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned char step);
 void xor_FillCircle(signed int cX, signed int cY, unsigned char r);
+void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, signed int vX, signed int vY, unsigned char end);
 
 void xor_CenterText(char toPrint[], unsigned char length, unsigned char y);
 void xor_CenterTextOffset(const char toPrint[], unsigned char length, unsigned char y, signed char offset);

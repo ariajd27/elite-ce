@@ -24,7 +24,7 @@
 #define COMPASS_VCENTER (DASH_VOFFSET + 10)
 #define COMPASS_SCALE (256 / 9)
 
-#define HEADER_Y 6
+#define HEADER_Y 7
 #define HEADER_DIVIDER_Y 20
 
 #define xor_clipX (DASH_HOFFSET + 1)

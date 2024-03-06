@@ -5,6 +5,7 @@
 #include "linear.h"
 #include "variables.h"
 #include "intmath.h"
+#include "generation.h"
 #include <debug.h>
 
 struct Ship ships[MAX_SHIPS];
@@ -169,8 +170,31 @@ void ShipAsBody(unsigned char shipIndex)
 {
 	const struct int_point_t center = ProjPoint(ships[shipIndex].position);
 	const unsigned int radius = 24576 / (ships[shipIndex].position.z >> 8);
-	if ((ships[shipIndex].shipType & 1) == 0) xor_Circle(center.x, center.y, radius);
-	else xor_FillCircle(center.x, center.y, radius);
+
+	if ((ships[shipIndex].shipType & 1) != 0)
+	{
+		// this is a star
+		xor_FillCircle(center.x, center.y, radius);
+		return;
+	}
+
+	// if we get here, this is a planet...
+	xor_Circle(center.x, center.y, radius);
+
+	// i removed the equator/meridian planets because they look like goddamn beach balls
+	if (gen_PlanetHasCrater())
+	{
+		if (ships[shipIndex].orientation.a[5] < 0) return; // only draw the crater on one side of the planet
+	
+		// draw the crater!!!!!
+		xor_Ellipse(center.x + 83 * ships[shipIndex].orientation.a[3] / (ships[shipIndex].position.z >> 8),
+					center.y + 83 * ships[shipIndex].orientation.a[4] / (ships[shipIndex].position.z >> 8),
+					96 * ships[shipIndex].orientation.a[6] / (ships[shipIndex].position.z / 128),
+					96 * ships[shipIndex].orientation.a[7] / (ships[shipIndex].position.z / 128),
+					96 * ships[shipIndex].orientation.a[0] / (ships[shipIndex].position.z / 128),
+					96 * ships[shipIndex].orientation.a[1] / (ships[shipIndex].position.z / 128),
+					64);
+	}
 }
 
 void DrawShip(unsigned char shipIndex)
@@ -202,11 +226,7 @@ void DrawShip(unsigned char shipIndex)
 void DoAI(unsigned char shipIndex)
 {
 	if (ships[shipIndex].shipType > BP_ESCAPEPOD) return;
-	if (ships[shipIndex].shipType == BP_CORIOLIS)
-	{
-		ships[shipIndex].roll = 127;
-		return;
-	}
+	if (ships[shipIndex].shipType == BP_CORIOLIS) return;
 
 	if (ships[shipIndex].position.x > 224 * 256 
 			|| ships[shipIndex].position.y > 224 * 256 

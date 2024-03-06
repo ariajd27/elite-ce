@@ -48,6 +48,8 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 void gen_PrintProductivity(const struct gen_sysData_t* in);
 void gen_PrintRadius(const struct gen_seed_t* in);
 
+bool gen_PlanetHasCrater();
+
 void gen_DrawLocalMap();
 void gen_DrawGalaxyMap();
 void gen_SelectNearestSystem(bool local);

@@ -160,8 +160,8 @@ void drawMenu(bool resetCrs)
 				const struct gen_seed_t* relevantSeed = 
 					currentMenu == THIS_DATA ? &currentSeed : &selectedSeed;
 
-				xor_CenterTextOffset("DATA ON", 7, HEADER_Y, 1 + strlen((*relevantData).name));
-				xor_CenterTextOffset((*relevantData).name, strlen((*relevantData).name), 8, -8);
+				xor_CenterTextOffset("DATA ON", 7, HEADER_Y, 1 + strlen(relevantData->name));
+				xor_CenterTextOffset(relevantData->name, strlen(relevantData->name), 8, -8);
 
 				xor_SetCursorPos(0, 6);
 				xor_lineSpacing = true;

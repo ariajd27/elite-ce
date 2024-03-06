@@ -498,3 +498,8 @@ bool gen_ChangeSystem()
 
 	return true;
 }
+
+bool gen_PlanetHasCrater()
+{
+	return (thisSystemData.techLevel & 0x02) != 0;
+}

@@ -57,12 +57,8 @@ struct vector_t proj(struct vector_t a, struct vector_t b)
 	return mul(b, dot(a, b) / dot (b, b));
 }
 
-#include <debug.h>
-
 unsigned int magnitude(struct vector_t a)
 {
-	dbg_printf("magnitude of (%d, %d, %d): ", a.x, a.y, a.z);
-
 	// prepare everything to be modified
 	unsigned int x = a.x < 0 ? -1 * a.x : a.x;
 	unsigned int y = a.y < 0 ? -1 * a.y : a.y;
@@ -87,15 +83,11 @@ unsigned int magnitude(struct vector_t a)
 		scale--;
 	}
 
-	dbg_printf("%u\n", mag);
-
 	return mag;
 }
 
 struct vector_t normalize(struct vector_t a)
 {
-	dbg_printf("normalizing (%d, %d, %d)...\n", a.x, a.y, a.z);
-
 	struct vector_t newVector;
 	signed int const mag = magnitude(a) & 0x7fffff;
 
@@ -112,8 +104,6 @@ struct vector_t normalize(struct vector_t a)
 	newVector.x = (a.x << scale1) / mag << scale2;
 	newVector.y = (a.y << scale1) / mag << scale2;
 	newVector.z = (a.z << scale1) / mag << scale2;
-
-	dbg_printf("normalized: (%d, %d, %d)\n", newVector.x, newVector.y, newVector.z);
 
 	return newVector;
 }

@@ -1,7 +1,6 @@
 #include <graphx.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <debug.h>
 
 #include "xorgfx.h"
 #include "intmath.h"
@@ -321,6 +320,40 @@ void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
 
 		xor_HorizontalLine(cY + yy, thisLeft, thisRight);
 	}
+}
+
+void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, signed int vX, signed int vY, unsigned char end)
+{
+	unsigned char const stepTest = intabs(uX) | intabs(uY) | intabs(vX) | intabs(vY);
+	unsigned char const step = stepTest < 8 ? 8
+							 : stepTest < 60 ? 4
+							 : 2;
+
+	signed int lastX = cX + uX - 1;
+	signed int lastY = cY + uY - 1;
+
+	for (unsigned char i = 0; i < end; i += step)
+	{
+		const signed int newX = cX + uX * trig_cos(i) / 256 + vX * trig_sin(i) / 256;
+		const signed int newY = cY + uY * trig_cos(i) / 256 + vY * trig_sin(i) / 256;
+
+		if (i != 0)
+		{
+			if (newX >= (signed int)xor_clipX
+				&& newX < (signed int)(xor_clipX + xor_clipWidth)
+				&& newY >= (signed int)xor_clipY
+				&& newY < (signed int)(xor_clipY + xor_clipHeight))
+			{
+				xor_Point(newX, newY);
+			}
+		}
+		xor_Line(lastX, lastY, newX, newY);
+
+		lastX = newX;
+		lastY = newY;
+	}
+
+	xor_Line(lastX, lastY, cX + uX - 1, cY + uY - 1);
 }
 
 void xor_Char(unsigned int x, unsigned char y, char toPrint)

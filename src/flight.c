@@ -11,6 +11,7 @@
 
 #include "variables.h"
 #include "linear.h"
+#include "intmath.h"
 #include "ship.h"
 #include "ship_data.h"
 #include "stardust.h"
@@ -18,6 +19,8 @@
 #include "flight.h"
 #include "input.h"
 #include "market.h"
+
+#include <debug.h>
 
 unsigned char player_speed = 0;
 signed char player_roll = 0;
@@ -81,9 +84,12 @@ void launch()
 
 	// spawn station
 	stationSoi = true;
-	NewShip(BP_CORIOLIS, (struct vector_t){ 0, 0, -256 }, Matrix(256,0,0, 0,256,0, 0,0,-256));
+	struct Ship* station = NewShip(BP_CORIOLIS,
+								   (struct vector_t){ 0, 0, -256 },
+								   Matrix(256,0,0, 0,256,0, 0,0,-256));
+	station->roll = 127;
 
-	// spawn planet (TODO by type / with generation data)
+	// spawn planet
 	NewShip(PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 
 	flt_DoLaunchAnimation();
@@ -303,6 +309,45 @@ bool doFlightInput()
 	else return true;
 }
 
+void flt_TrySpawnStation()
+{
+	dbg_printf("top of station spawn check\n");
+
+	// find the planet
+	unsigned char planetIndex;
+	for (planetIndex = 0; ships[planetIndex].shipType != PLANET; planetIndex++);
+
+	// find the station's current (imaginary) position in its orbit
+	const struct vector_t stationPos = 
+		add(ships[planetIndex].position, mul(getCol(ships[planetIndex].orientation, 2), 2 * 96));
+
+	// check distances
+	if (intabs(stationPos.x) > 49152) return;
+	if (intabs(stationPos.y) > 49152) return;
+	if (intabs(stationPos.z) > 49152) return;
+
+	dbg_printf("station spawn branch taken\n");
+
+	// spawn the station
+	struct Ship* station = NewShip(BP_CORIOLIS,
+								   stationPos,
+								   ships[planetIndex].orientation);
+
+	dbg_printf("station spawned\n");
+
+	// flip the nose vector so the slot faces the planet
+	station->orientation.a[6] *= -1;
+	station->orientation.a[7] *= -1;
+	station->orientation.a[8] *= -1;
+
+	// make the station spin
+	station->roll = 127;
+
+	stationSoi = true;
+
+	dbg_printf("bottom of station spawn check\n");
+}
+
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
 	if (player_speed == 0)
@@ -335,19 +380,30 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 
 void flt_DoFrame(bool dashboardVisible)
 {
+	dbg_printf("top of frame method\n");
+
 	// black background
 	gfx_FillScreen(COLOR_BLACK);
 
 	// outer white frame
 	gfx_SetColor(COLOR_WHITE);
 	gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
-	
+
+	// check if we have entered the station soi
+	if (!stationSoi/* && drawCycle % 128 == 0*/) flt_TrySpawnStation();
+
+	dbg_printf("before tidying\n");
+
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
+
+	dbg_printf("before ai\n");
 
 	// do ai -- two ships per cycle
 	DoAI(drawCycle % MAX_SHIPS);
 	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
+
+	dbg_printf("before ship loop\n");
 	
 	for (unsigned char i = 0; i < numShips; i++)
 	{
@@ -412,8 +468,12 @@ void flt_DoFrame(bool dashboardVisible)
 		}
 	}
 
+	dbg_printf("before drawing frame\n");
+
 	drawSpaceView();
 	if (dashboardVisible) drawDashboard();
+
+	dbg_printf("bottom of frame method\n");
 }
 
 void doFlight()
