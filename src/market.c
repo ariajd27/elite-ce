@@ -5,6 +5,7 @@
 
 #include "market.h"
 #include "generation.h"
+#include "upgrades.h"
 #include "xorgfx.h"
 #include "variables.h"
 
@@ -98,8 +99,10 @@ void mkt_PrintMarketTable()
 		xor_SetCursorPos(0, y);
 		xor_Print(productNames[i]);
 
-		xor_SetCursorPos(15, y);
-		xor_PrintUInt24Tenths(localEntries[i].price * 4);
+		xor_SetCursorPos(14, y);
+		xor_PrintUInt24(localEntries[i].price * 4 / 10, 3);
+		xor_PrintChar('.');
+		xor_PrintUInt8(localEntries[i].price * 4 % 10, 1);
 		xor_Print(" Cr");
 
 		if (localEntries[i].quantity > 0)
@@ -119,11 +122,13 @@ void mkt_PrintMarketTable()
 
 void mkt_PrintInventoryTable()
 {
+	const unsigned char cargoCap = player_upgrades.largeCargoBay ? 35 : 25;
+
 	// capacity
 	xor_SetCursorPos(24, 1);
-	xor_PrintUInt8(player_cargo_cap - player_cargo_space, 2);
+	xor_PrintUInt8(cargoCap - player_cargo_space, 2);
 	xor_PrintChar('/');
-	xor_PrintUInt8(player_cargo_cap, 2);
+	xor_PrintUInt8(cargoCap, 2);
 	xor_PrintChar('t');
 
 	// headings
@@ -147,8 +152,6 @@ void mkt_PrintInventoryTable()
 		y++;
 	}
 }
-
-#include <debug.h>
 
 void mkt_PrintQtyQuery(unsigned char const goodIndex, bool const toBuy)
 {

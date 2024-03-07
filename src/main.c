@@ -3,7 +3,6 @@
 #include <sys/rtc.h>
 #include <fileioc.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include <string.h>
@@ -13,13 +12,11 @@
 #include "variables.h"
 #include "ship.h"
 #include "ship_data.h"
-#include "stardust.h"
 #include "generation.h"
 #include "market.h"
 #include "flight.h"
 #include "input.h"
-
-#include <debug.h>
+#include "upgrades.h"
 
 unsigned char saveHandle;
 
@@ -62,8 +59,6 @@ void printPlayerCondition()
 
 void drawMenu(bool resetCrs)
 {
-	dbg_printf("drawing new menu...\n");
-
 	// frame, background
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(0, 0, GFX_LCD_WIDTH, GFX_LCD_HEIGHT);
@@ -222,6 +217,11 @@ void drawMenu(bool resetCrs)
 		case UPGRADES:
 
 			xor_CenterText("OUTFITTING", 10, HEADER_Y);
+
+			upg_PrintOutfittingTable();
+
+			xor_FillRectangle(DASH_HOFFSET + 5, 
+					HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 
 			break;
 
@@ -411,10 +411,43 @@ bool doMenuInput()
 		case UPGRADES:
 
 			returnMenu = UPGRADES;
+			{
+				const unsigned char displayedOptions = thisSystemData.techLevel < 10 
+													 ? thisSystemData.techLevel + 2
+											         : NUM_UPGRADES + 1;
+
+				if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+				{
+					menu_selOption--;
+					if (menu_selOption > displayedOptions) menu_selOption = displayedOptions;
+				}
+				else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+				{
+					menu_selOption++;
+					if (menu_selOption > displayedOptions) menu_selOption = 0;
+				}
+			}
+
+			if (enter && prevEnter == 0)
+			{
+				upg_Buy(menu_selOption); // unlike the other purchasing tables, we don't
+										 // ever update this one, because we don't display
+										 // anything here that has to do with how many the
+										 // player has, and stock is not finite
+			}
 
 			if (graph && prevGraph == 0)
 			{
 				currentMenu = MARKET;
+			}
+
+			if (menu_selOption != prevSelOption)
+			{
+				xor_FillRectangle(DASH_HOFFSET + 5, 
+						HEADER_DIVIDER_Y + 10 + 8 * prevSelOption, DASH_WIDTH - 10, 9);
+				xor_FillRectangle(DASH_HOFFSET + 5, 
+						HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
+				gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 			}
 
 			break;

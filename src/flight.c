@@ -19,6 +19,7 @@
 #include "flight.h"
 #include "input.h"
 #include "market.h"
+#include "upgrades.h"
 
 #include <debug.h>
 

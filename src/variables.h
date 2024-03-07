@@ -75,6 +75,7 @@
 #define NUM_PLAYER_DEATH_CANS 2
 
 #define NUM_TRADE_GOODS 17
+#define NUM_UPGRADES 13
 
 #define PLAYER_MAX_SPEED 0x1c
 
@@ -113,6 +114,5 @@ extern unsigned int player_kills;
 extern unsigned char player_energy;
 
 extern unsigned char player_cargo_space;
-extern unsigned char player_cargo_cap;
 
 #endif
