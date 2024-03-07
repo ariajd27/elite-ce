@@ -147,6 +147,7 @@ void drawMenu(bool resetCrs)
 			else xor_Print("---- E L I T E ----");
 
 			xor_Print("\n\nEQUIPMENT:");
+			upg_DisplayEquipment();
 
 			break;
 
@@ -430,10 +431,7 @@ bool doMenuInput()
 
 			if (enter && prevEnter == 0)
 			{
-				upg_Buy(menu_selOption); // unlike the other purchasing tables, we don't
-										 // ever update this one, because we don't display
-										 // anything here that has to do with how many the
-										 // player has, and stock is not finite
+				if (upg_Buy(menu_selOption)) drawMenu(false); // only if fuel was bought
 			}
 
 			if (graph && prevGraph == 0)

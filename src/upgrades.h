@@ -22,6 +22,8 @@ extern struct player_upgrades_t {
 } player_upgrades;
 
 void upg_PrintOutfittingTable();
-void upg_Buy(const unsigned char selIndex);
+bool upg_Buy(const unsigned char selIndex);
+
+void upg_DisplayEquipment();
 
 #endif

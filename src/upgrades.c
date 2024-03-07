@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "generation.h"
 #include "variables.h"
 #include "xorgfx.h"
@@ -63,8 +65,10 @@ void upg_PrintOutfittingTable()
 
 	xor_SetCursorPos(0, 4);
 	xor_Print("Fuel");
-	xor_SetCursorPos(22, 4);
-	xor_PrintUInt24Tenths((70 - player_fuel) * 20);
+	xor_SetCursorPos(20, 4);
+	xor_PrintUInt8((70 - player_fuel) * 2, 3);
+	xor_PrintChar('.');
+	xor_PrintUInt8((70 - player_fuel) * 20 % 10, 1);
 	xor_Print(" Cr");
 
 	for (unsigned char i = 0; i < NUM_UPGRADES; i++)
@@ -87,92 +91,123 @@ void upg_PrintOutfittingTable()
 		xor_PrintUInt8(upg_prices[i + 1] % 10, 1);
 		xor_Print(" Cr");
 	}
+
+	xor_SetCursorPos(0, NUM_UPGRADES + 8);
+	xor_Print("Cash: ");
+	xor_PrintUInt24Tenths(player_money);
+	xor_Print(" Cr");
 }
 
-void upg_Buy(const unsigned char selIndex)
+bool upg_Buy(const unsigned char selIndex)
 {
 	const unsigned int price = selIndex == 0 ? (70 - player_fuel) * 20 : upg_prices[selIndex - 1];
-	if (price > player_money) return;
+	if (price > player_money) return false;
 
 	// we check for already having the thing on a case by case basis
 	switch (selIndex)
 	{
 		case 0:
-			if (player_fuel >= 70) return;
+			if (player_fuel >= 70) return false;
 			player_fuel = 70;
 			break;
 
 		case 1:
-			if (player_missiles >= 4) return;
+			if (player_missiles >= 4) return false;
 			player_missiles++;
 			break;
 
 		case 2:
-			if (player_upgrades.largeCargoBay) return;
+			if (player_upgrades.largeCargoBay) return false;
 			player_upgrades.largeCargoBay = true;
 			break;
 
 		case 3:
-			if (player_upgrades.ecm) return;
+			if (player_upgrades.ecm) return false;
 			player_upgrades.ecm = true;
 			break;
 
 		case 4:
-			if (player_lasers == PULSE) return;
+			if (player_lasers == PULSE) return false;
 			player_lasers = PULSE;
 			break;
 
 		case 5:
-			if (player_lasers == BEAM) return;
+			if (player_lasers == BEAM) return false;
 			player_lasers = BEAM;
 			break;
 
 		case 6:
-			if (player_upgrades.fuelScoops) return;
+			if (player_upgrades.fuelScoops) return false;
 			player_upgrades.fuelScoops = true;
 			break;
 
 		case 7:
-			if (player_upgrades.escapeCapsule) return;
+			if (player_upgrades.escapeCapsule) return false;
 			player_upgrades.escapeCapsule = true;
 			break;
 
 		case 8:
-			if (player_upgrades.energyBomb) return;
+			if (player_upgrades.energyBomb) return false;
 			player_upgrades.energyBomb = true;
 			break;
 
 		case 9:
-			if (player_upgrades.extraEnergy) return;
+			if (player_upgrades.extraEnergy) return false;
 			player_upgrades.extraEnergy = true;
 			break;
 
 		case 10:
-			if (player_upgrades.dockingComputer) return;
+			if (player_upgrades.dockingComputer) return false;
 			player_upgrades.dockingComputer = true;
 			break;
 
 		case 11:
-			if (player_upgrades.galacticHyperdrive) return;
+			if (player_upgrades.galacticHyperdrive) return false;
 			player_upgrades.galacticHyperdrive = true;
 			break;
 
 		case 12:
-			if (player_lasers == MINING) return;
+			if (player_lasers == MINING) return false;
 			player_lasers = MINING;
 			break;
 
 		case 13:
-			if (player_lasers == MILITARY) return;
+			if (player_lasers == MILITARY) return false;
 			player_lasers = MILITARY;
 			break;
 
 		default:
-			return; // we have somehow selected a nonexistent item. don't buy it.
+			return false; // we have somehow selected a nonexistent item. don't buy it.
 	}
 
 	// if we get here, we got the upgrade, so we should probably pay for it
 	player_money -= price;
 
-	return;
+	return true;
+}
+
+void upg_DisplayEquipment()
+{
+	const unsigned char x = xor_cursorX;
+	unsigned char y = xor_cursorY + 1; // incremented after each line printed,
+									   // already at +1 bc lasers always printed
+
+	// always print equipped lasers
+	xor_Print(upg_displayNames[player_lasers == PULSE ? 3
+							 : player_lasers == BEAM ? 4
+							 : player_lasers == MINING ? 11
+							 : 12]);
+
+	if (player_upgrades.largeCargoBay)
+	{
+		xor_SetCursorPos(x, y);
+		xor_Print(upg_displayNames[1]);
+		y++;
+	}
+	if (player_upgrades.ecm)
+	{
+		xor_SetCursorPos(x, y);
+		xor_Print(upg_displayNames[2]);
+		y++;
+	}
 }
