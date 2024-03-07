@@ -9,6 +9,7 @@
 #include <debug.h>
 
 struct Ship ships[MAX_SHIPS];
+
 unsigned char numShips = 0;
 
 struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct intmatrix_t orientation)

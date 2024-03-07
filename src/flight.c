@@ -22,14 +22,28 @@
 
 #include <debug.h>
 
-unsigned char player_speed = 0;
-signed char player_roll = 0;
-signed char player_pitch = 0;
+unsigned char player_speed;
+signed char player_roll;
+signed char player_pitch;
+unsigned char player_altitude;
 
-enum viewDirMode_t viewDirMode = FRONT;
-enum player_condition_t player_condition = DOCKED;
+enum viewDirMode_t viewDirMode;
+enum player_condition_t player_condition;
 
-bool stationSoi = true;
+bool stationSoi;
+
+void flt_Init()
+{
+	player_speed = 0;
+	player_roll = 0;
+	player_pitch = 0;
+	player_altitude = 96;
+
+	viewDirMode = FRONT;
+	player_condition = DOCKED;
+
+	stationSoi = true;
+}
 
 void flt_DoLaunchAnimation()
 {
@@ -73,6 +87,7 @@ void flt_DoLaunchAnimation()
 
 void flt_DoHyperspaceAnimation()
 {
+	flt_DoLaunchAnimation(); // placeholder, TODO real animation
 }
 
 void launch()
@@ -185,13 +200,11 @@ void drawDashboard()
 
 	// right panel
 	// speed display
-	if (player_speed == PLAYER_MAX_SPEED) gfx_SetColor(COLOR_RED);
-	else gfx_SetColor(COLOR_YELLOW);
+	gfx_SetColor(COLOR_YELLOW);
 	unsigned char const speedBarLength = 32 * player_speed / PLAYER_MAX_SPEED;
 	gfx_FillRectangle(DASH_HOFFSET_RIGHT + 4, DASH_VOFFSET + 2, speedBarLength, 3);
 
 	// roll display
-	gfx_SetColor(COLOR_YELLOW);
 	signed char rollBarOffset = player_roll / 2;
 	if (rollBarOffset == 16) rollBarOffset--;
 	else if (rollBarOffset == -16) rollBarOffset++;
@@ -202,6 +215,16 @@ void drawDashboard()
 	if (pitchBarOffset == 16) pitchBarOffset--;
 	else if (pitchBarOffset == -16) pitchBarOffset++;
 	gfx_FillRectangle(DASH_HOFFSET_RIGHT + 20 + pitchBarOffset, DASH_VOFFSET + 18, 2, 3);
+
+	// left panel
+	// fuel display
+	gfx_SetColor(COLOR_YELLOW);
+	const unsigned char fuelBarLength = player_fuel <= 64 ? player_fuel / 2 : 32;
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 18, fuelBarLength, 3);
+
+	// altitude display
+	gfx_SetColor(player_altitude < 32 ? COLOR_RED : COLOR_YELLOW);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 42, 1 + player_altitude / 8, 3);	
 }
 
 void flt_TryHyperdrive()
@@ -212,6 +235,7 @@ void flt_TryHyperdrive()
 	if (currentSeed.c == selectedSeed.c) return;
 
 	stationSoi = false;
+	drawCycle = 0;
 	gen_ChangeSystem();
 }
 
@@ -341,6 +365,50 @@ void flt_TrySpawnStation()
 	stationSoi = true;
 }
 
+void flt_UpdatePlayerAltitude()
+{
+	for (unsigned char target = PLANET; true; target++)
+	{
+		if (target > SUN) 
+		{
+			// we have checked both sun and planet, and neither worked, so display a full bar
+			player_altitude = 255;
+			return;
+		}
+
+		// find what we are looking for
+		unsigned char targetIndex = 0;
+		bool found = true;
+		while (ships[targetIndex].shipType != target)
+		{
+			targetIndex++;
+
+			if (targetIndex >= numShips) // it doesn't exist
+			{
+				found = false;
+				break;
+			}
+		}
+		if (!found) continue; // we had to stop because we couldn't find the ship
+
+		// check if it is close enough to display
+
+		const signed int x = ships[targetIndex].position.x / 256;
+		const signed int y = ships[targetIndex].position.y / 256;
+		const signed int z = ships[targetIndex].position.z / 256;
+
+		unsigned int altitude = intsqrt(x * x + y * y + z * z);
+
+		if (altitude >= 255 + 96) continue; // too far
+
+		player_altitude = altitude - 96;
+
+		if (altitude <= 96) flt_Death(); // we have crashed into the planet!
+
+		break; // if we made it down here, we drew the dial, so we are good
+	}
+}
+
 // these checks are pretty damn generous, but that's probably good for testing
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
@@ -381,8 +449,9 @@ void flt_DoFrame(bool dashboardVisible)
 	gfx_SetColor(COLOR_WHITE);
 	gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
 
-	// check if we have entered the station soi
-	if (!stationSoi/* && drawCycle % 128 == 0*/) flt_TrySpawnStation();
+	// periodic updates
+	if (!stationSoi && drawCycle % 64 == 0) flt_TrySpawnStation();
+	if (drawCycle % 8 == 0) flt_UpdatePlayerAltitude();
 
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
@@ -483,6 +552,8 @@ void flt_Death()
 	// but that could probably be called in lots of different
 	// places... they all need to accomodate the possibility
 	// of a game over
+
+	player_dead = true;
 
 	drawCycle = 255;
 

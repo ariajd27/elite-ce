@@ -8,6 +8,7 @@
 #include "variables.h"
 #include "flight.h"
 
+// warning: there is code that relies on SUN > PLANET being true
 #define SUN 101
 #define PLANET 100
 

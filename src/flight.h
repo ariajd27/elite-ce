@@ -15,7 +15,7 @@ extern enum player_condition_t {
 	RED
 } player_condition;
 
-void flightInit();
+void flt_Init();
 
 void resetPlayerCondition();
 void drawSpaceView();

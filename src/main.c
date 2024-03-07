@@ -19,6 +19,8 @@
 #include "flight.h"
 #include "input.h"
 
+#include <debug.h>
+
 unsigned char saveHandle;
 
 bool toExit = false;
@@ -60,6 +62,8 @@ void printPlayerCondition()
 
 void drawMenu(bool resetCrs)
 {
+	dbg_printf("drawing new menu...\n");
+
 	// frame, background
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(0, 0, GFX_LCD_WIDTH, GFX_LCD_HEIGHT);
@@ -469,7 +473,6 @@ bool doMenuInput()
 void begin()
 {
 	currentMenu = STATUS;
-	player_condition = DOCKED;
 
 	drawCycle = 0;
 
@@ -491,6 +494,8 @@ void begin()
 
 	player_cargo_space = 25;
 	player_cargo_cap = 25;
+
+	flt_Init();
 }
 
 unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
