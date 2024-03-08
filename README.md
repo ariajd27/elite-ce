@@ -22,11 +22,12 @@ Current features:
  - in-system jumps
  - spawning stations
  - detailed planet rendering
+ - upgrades
+ - saving/loading
 
 Todo:
- - upgrades & refueling
  - spawning enemies
  - combat
- - saving/loading
  - galactic hyperdrive
+ - hyperdrive animation
  - optimization
