@@ -60,12 +60,12 @@ void upg_PrintOutfittingTable()
 {
 	xor_SetCursorPos(1, 3);
 	xor_Print("ITEM");
-	xor_SetCursorPos(21, 3);
+	xor_SetCursorPos(23, 3);
 	xor_Print("PRICE");
 
 	xor_SetCursorPos(0, 4);
 	xor_Print("Fuel");
-	xor_SetCursorPos(20, 4);
+	xor_SetCursorPos(22, 4);
 	xor_PrintUInt8((70 - player_fuel) * 2, 3);
 	xor_PrintChar('.');
 	xor_PrintUInt8((70 - player_fuel) * 20 % 10, 1);
@@ -85,10 +85,10 @@ void upg_PrintOutfittingTable()
 		xor_SetCursorPos(0, y);
 		xor_Print(upg_displayNames[i]);
 
-		xor_SetCursorPos(19, y);
-		xor_PrintUInt24(upg_prices[i + 1] / 10, 4);
+		xor_SetCursorPos(21, y);
+		xor_PrintUInt24(upg_prices[i] / 10, 4);
 		xor_PrintChar('.');
-		xor_PrintUInt8(upg_prices[i + 1] % 10, 1);
+		xor_PrintUInt8(upg_prices[i] % 10, 1);
 		xor_Print(" Cr");
 	}
 
@@ -118,6 +118,7 @@ bool upg_Buy(const unsigned char selIndex)
 
 		case 2:
 			if (player_upgrades.largeCargoBay) return false;
+			player_cargo_space += 10;
 			player_upgrades.largeCargoBay = true;
 			break;
 

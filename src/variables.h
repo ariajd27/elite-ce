@@ -87,6 +87,7 @@
 
 #define cmdr_name "JAMESON"
 #define cmdr_name_length 7
+#define CMDR_NAME_MAX_LENGTH 16
 
 extern unsigned char drawCycle;
 

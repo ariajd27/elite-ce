@@ -34,7 +34,6 @@ unsigned char player_outlaw;
 unsigned int player_kills;
 
 unsigned char player_cargo_space;
-unsigned char player_cargo_cap;
 
 void printPlayerCondition()
 {
@@ -431,7 +430,7 @@ bool doMenuInput()
 
 			if (enter && prevEnter == 0)
 			{
-				if (upg_Buy(menu_selOption)) drawMenu(false); // only if fuel was bought
+				if (upg_Buy(menu_selOption)) drawMenu(false); // only if something was bought
 			}
 
 			if (graph && prevGraph == 0)
@@ -516,6 +515,8 @@ void begin()
 	selectedSeed = currentSeed;
 	selectedSystemData = thisSystemData;
 	gen_ResetDistanceToTarget();
+
+	marketSeed = rand() % 256;
 	mkt_ResetLocalMarket();
 
 	player_dead = false;
@@ -524,7 +525,6 @@ void begin()
 	player_outlaw = 0;
 
 	player_cargo_space = 25;
-	player_cargo_cap = 25;
 
 	flt_Init();
 }
@@ -592,10 +592,59 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 void loadGame()
 {
+	saveHandle = ti_Open(SAVE_VAR_NAME, "r");
+
+	// load all the data
+	ti_Read(&cmdr_name, CMDR_NAME_MAX_LENGTH, 1, saveHandle);
+	ti_Read(&gen_currentGalaxy, 1, 1, saveHandle);
+	ti_Read(&originSeed, 2, 3, saveHandle);
+	ti_Read(&currentSeed, 2, 3, saveHandle);
+	ti_Read(&selectedSeed, 2, 3, saveHandle);
+	ti_Read(&marketSeed, 1, 1, saveHandle);
+	ti_Read(&player_fuel, 1, 1, saveHandle);
+	ti_Read(&player_money, 3, 1, saveHandle);
+	ti_Read(&player_outlaw, 1, 1, saveHandle);
+	ti_Read(&player_kills, 3, 1, saveHandle);
+	ti_Read(&player_cargo_space, 1, 1, saveHandle);
+	ti_Read(&player_missiles, 1, 1, saveHandle);
+	ti_Read(&player_lasers, 1, 1, saveHandle);
+	ti_Read(&player_upgrades, 1, 1, saveHandle);
+	ti_Read(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
+
+	ti_Close(saveHandle);
+
+	// set map offset and system data cards
+	gen_SetSystemData(&thisSystemData, &currentSeed);
+	gen_SetSystemData(&selectedSystemData, &selectedSeed);
+	gen_ResetDistanceToTarget();
+	mkt_ResetLocalMarket();
 }
 
 void saveGame()
 {
+	saveHandle = ti_Open(SAVE_VAR_NAME, "w");
+
+	ti_Write(&cmdr_name, CMDR_NAME_MAX_LENGTH, 1, saveHandle);
+
+	// this is the minimum information to reconstruct the state of the galaxy
+	ti_Write(&gen_currentGalaxy, 1, 1, saveHandle);
+	ti_Write(&originSeed, 2, 3, saveHandle);
+	ti_Write(&currentSeed, 2, 3, saveHandle);
+	ti_Write(&selectedSeed, 2, 3, saveHandle); // okay, technically unneeded, but nice
+	ti_Write(&marketSeed, 1, 1, saveHandle);
+
+	// all the player's information
+	ti_Write(&player_fuel, 1, 1, saveHandle);
+	ti_Write(&player_money, 3, 1, saveHandle);
+	ti_Write(&player_outlaw, 1, 1, saveHandle);
+	ti_Write(&player_kills, 3, 1, saveHandle);
+	ti_Write(&player_cargo_space, 1, 1, saveHandle);
+	ti_Write(&player_missiles, 1, 1, saveHandle);
+	ti_Write(&player_lasers, 1, 1, saveHandle);
+	ti_Write(&player_upgrades, 1, 1, saveHandle);
+	ti_Write(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
+
+	ti_Close(saveHandle);
 }
 
 bool run()
@@ -606,6 +655,7 @@ bool run()
 
 	// here is the save game loading logic. first, we try to open the save
 	saveHandle = ti_Open(SAVE_VAR_NAME, "r");
+	ti_Close(saveHandle);
 
 	// if it's an error, there's no save, so we won't give the user the option
 	// to load a game at all
@@ -615,16 +665,12 @@ bool run()
 
 		if (tsResponse == 2) return false; // player pressed "clear", exit the game
 
-		else if (tsResponse == 1) loadGame(); // TODO
+		else if (tsResponse == 1) loadGame();
 
 		// otherwise, the player didn't want to load a saved game, so do nothing--
 		// the Jameson default save is already loaded. this is the same outcome as
-		// if no save had been found in the first place
+		// if no save had been found in the first place	
 	}
-	
-	// honestly, i'm not sure if ti_Close(0) does anything, but the documentation
-	// says to always call ti_Close() after ti_Open(), so here we are
-	ti_Close(saveHandle);
 
 	// this is the title screen that is always shown
 	if (titleScreen(BP_MAMBA, "Press ENTER, CMDR.", 18, true) == 2) return false;
@@ -657,7 +703,7 @@ bool run()
 	// game if the player is docked. therefore, if we exit the loop while the player
 	// is docked, the player has pressed "Save & Quit", and vice versa. so that's
 	// what we check.
-	if (player_condition == DOCKED) saveGame(); // TODO
+	if (player_condition == DOCKED) saveGame();
 
 	// similar logic to above. the only time we can get here besides the player
 	// having quit the game is the "if (player_dead) break;" statement in the loop

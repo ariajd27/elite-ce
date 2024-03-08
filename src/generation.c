@@ -472,6 +472,8 @@ bool gen_ChangeSystem()
 	currentSeed = selectedSeed;
 	thisSystemData = selectedSystemData;
 	gen_distanceToTarget = 0;
+
+	marketSeed = rand() % 256;
 	mkt_ResetLocalMarket();
 
 	numShips = 0;

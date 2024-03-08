@@ -6,7 +6,7 @@
 #include "variables.h"
 #include "intmath.h"
 #include "generation.h"
-#include <debug.h>
+#include "flight.h"
 
 struct Ship ships[MAX_SHIPS];
 
@@ -22,6 +22,7 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 
 	ships[numShips].isHostile = false;
 	ships[numShips].aggro = 255;
+	// ships[numShips].target not initialized
 
 	ships[numShips].isExploding = 0;
 	ships[numShips].toExplode = 0;
@@ -49,7 +50,11 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 // setting numShips = 0 so the other ones aren't processed and are overwritten
 void RemoveShip(unsigned char shipIndex)
 {
-	for (unsigned char i = shipIndex; i < numShips; i++) ships[i] = ships[i + 1];
+	for (unsigned char i = shipIndex; i < numShips; i++)
+	{
+		ships[i] = ships[i + 1];
+		ships[i].target -= 1;
+	}
 	numShips--;
 }
 
@@ -210,16 +215,21 @@ void DrawShip(unsigned char shipIndex)
 		for (unsigned char i = 0; i < 4; i++) ships[shipIndex].explosionRand[i] = rand();
 	}
 
-	// why have a bunch of "||" when we can just do this?
 	if (ships[shipIndex].position.z <= 0) return;
+
+	if (ships[shipIndex].shipType > BP_ESCAPEPOD)
+	{
+		ShipAsBody(shipIndex);
+		return;
+	}
+
 	if ((unsigned int)ships[shipIndex].position.z >= 0xc00000) return;
 	if (ships[shipIndex].position.x >= ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 
-	if (ships[shipIndex].shipType > BP_ESCAPEPOD) ShipAsBody(shipIndex);
-	else if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
 	else ShipAsWireframe(shipIndex);
 }
 
@@ -235,18 +245,26 @@ void DoAI(unsigned char shipIndex)
 			|| ships[shipIndex].position.y < -224 * 256
 			|| ships[shipIndex].position.z < -224 * 256)
 	{
+		if (ships[shipIndex].shipType == BP_CORIOLIS) stationSoi = false;
 		RemoveShip(shipIndex);
 		return;
 	}
 
-	// target vector goes away from player by default
+	// which way are we trying to go?
 	struct vector_t goVector;
-	if (ships[shipIndex].shipType != BP_ESCAPEPOD)
+	if (ships[shipIndex].shipType == BP_MISSILE)
 	{
+		// missiles head towards their target
+		goVector = sub(ships[shipIndex].position, ships[ships[shipIndex].target].position);
+	}
+	else if (ships[shipIndex].shipType != BP_ESCAPEPOD)
+	{
+		// most things head towards / away from the player
 		goVector = ships[shipIndex].position;
 	}
 	else
 	{
+		// escape pods flee towards the planet
 		unsigned char i;
 		for (i = 0; ships[i].shipType != PLANET; i++);
 		goVector = sub(ships[i].position, ships[shipIndex].position);
@@ -255,6 +273,8 @@ void DoAI(unsigned char shipIndex)
 	signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
 
 	// if not too close and feeling aggressive, set target towards player instead
+	// missiles are always hostile, so this always flips the vector. that's why we set
+	// the missile's go vector to (missile - target) instead of (target - missile) above.
 	if (ships[shipIndex].isHostile == true)
 	{
 		if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)

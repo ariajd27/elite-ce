@@ -1,6 +1,11 @@
 #ifndef market_include_file
 #define market_include_file
 
+#include "variables.h"
+
+extern unsigned char marketSeed;
+extern unsigned char inventory[NUM_TRADE_GOODS];
+
 void mkt_ResetLocalMarket();
 void mkt_PrintMarketTable();
 void mkt_PrintInventoryTable();

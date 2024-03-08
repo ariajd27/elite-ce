@@ -15,6 +15,8 @@ extern enum player_condition_t {
 	RED
 } player_condition;
 
+extern bool stationSoi;
+
 void flt_Init();
 
 void resetPlayerCondition();

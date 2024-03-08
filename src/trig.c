@@ -8,12 +8,12 @@ const unsigned char sin_lut[32] = {
 signed int trig_sin(const unsigned char angle)
 {
 	if (angle < 32) return sin_lut[angle]; // Q1, Q2
-	else return -1 * sin_lut[angle - 32]; // Q3, Q4
+	else return -sin_lut[angle - 32]; // Q3, Q4
 }
 
 signed int trig_cos(const unsigned char angle)
 {
 	if (angle < 16) return sin_lut[angle + 16]; // Q1
-	else if (angle < 48) return -1 * sin_lut[angle - 16]; // Q2, Q3
+	else if (angle < 48) return -sin_lut[angle - 16]; // Q2, Q3
 	else return sin_lut[angle - 48]; // Q4
 }

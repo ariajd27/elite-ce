@@ -62,20 +62,20 @@ struct mkt_localEntry_t {
 
 unsigned char inventory[NUM_TRADE_GOODS];
 
+unsigned char marketSeed;
+
 void mkt_ResetLocalMarket()
 {
-	const unsigned char r = rand() % 256;
-
 	for (unsigned char i = 0; i < NUM_TRADE_GOODS; i++)
 	{
 		localEntries[i].price = 
 			tradeGoods[i].basePrice 
-			+ (r & tradeGoods[i].mask) 
+			+ (marketSeed & tradeGoods[i].mask) 
 			+ thisSystemData.economy * tradeGoods[i].econFactor;
 
 		const signed int tempQuantity =
 			tradeGoods[i].baseQuantity
-			+ (r & tradeGoods[i].mask)
+			+ (marketSeed & tradeGoods[i].mask)
 			- thisSystemData.economy * tradeGoods[i].econFactor;
 		localEntries[i].quantity = tempQuantity < 0 ? 0 : tempQuantity % 64;
 	}

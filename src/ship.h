@@ -20,6 +20,7 @@ struct Ship
 
 	bool isHostile;
 	unsigned char aggro;
+	unsigned char target;
 
 	unsigned char isExploding : 1;
 	unsigned char toExplode : 1;
