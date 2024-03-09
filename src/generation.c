@@ -9,6 +9,8 @@
 #include "market.h"
 #include "ship.h"
 
+#include <debug.h>
+
 unsigned char gen_currentGalaxy;
 
 struct gen_seed_t originSeed, currentSeed, selectedSeed;
@@ -492,7 +494,7 @@ bool gen_ChangeSystem()
 	planet->pitch = 127;
 	planet->roll = 127;
 
-	signed int sunZ = ((currentSeed.b & 0x0700) << 8) | 0x810000;
+	signed int sunZ = -(((currentSeed.b & 0x0600) | 0x0100) << 8);
 	signed int sunX = (currentSeed.c & 0x0300) << 8;
 	NewShip(SUN,
 		    (struct vector_t){ sunX, sunX, sunZ },

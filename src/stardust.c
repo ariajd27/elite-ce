@@ -4,12 +4,7 @@
 
 #include "variables.h"
 
-struct {
-	bool active;
-	signed int x;
-	signed int y;
-	signed int z;
-} stardust[STARDUST_COUNT];
+struct stardust_t stardust[STARDUST_COUNT];
 
 void stardust_Draw()
 {

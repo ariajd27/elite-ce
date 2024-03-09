@@ -62,7 +62,7 @@ struct int_point_t ProjPoint(struct vector_t toProject)
 {
 	struct int_point_t output;
 
-	if (toProject.x < 32768 && toProject.x > -32768 && toProject.y < 32768 && toProject.y > -32768)
+	if (intabs(toProject.x) <= 0x7fff && intabs(toProject.y) <= 0x7fff)
 	{
 		output.x = (signed int)VIEW_HCENTER + (toProject.x * 256) / toProject.z;
 		output.y = (signed int)VIEW_VCENTER + (toProject.y * 256) / toProject.z;
@@ -131,8 +131,10 @@ void ShipAsWireframe(unsigned char shipIndex)
 		bool calculated;
 		struct int_point_t screenPosition;
 	} vertices[28] = {
-		false,
-		(struct int_point_t){ 0, 0 }
+		{ 
+			false, 
+			(struct int_point_t){ 0, 0 } 
+		}
 	};
 
 	for (unsigned char i = 0; i < ships[shipIndex].numEdges; i++)
@@ -176,9 +178,8 @@ void ShipAsBody(unsigned char shipIndex)
 	const struct int_point_t center = ProjPoint(ships[shipIndex].position);
 	const unsigned int radius = 24576 / (ships[shipIndex].position.z >> 8);
 
-	if ((ships[shipIndex].shipType & 1) != 0)
+	if (ships[shipIndex].shipType == SUN)
 	{
-		// this is a star
 		xor_FillCircle(center.x, center.y, radius);
 		return;
 	}
@@ -227,7 +228,7 @@ void DrawShip(unsigned char shipIndex)
 	if (ships[shipIndex].position.x >= ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
-	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
+	if (ships[shipIndex].position.y < -1 * ships[shipIndex].position.z) return;
 
 	if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
 	else ShipAsWireframe(shipIndex);

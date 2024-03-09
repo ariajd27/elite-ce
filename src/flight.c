@@ -46,7 +46,7 @@ void flt_Init()
 	stationSoi = true;
 }
 
-void flt_DoLaunchAnimation()
+void flt_DoTunnelAnimation(unsigned char step, bool color)
 {
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
@@ -62,7 +62,7 @@ void flt_DoLaunchAnimation()
 		{
 			timer = clock();
 
-			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, 8);	
+			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, step);	
 			gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 
 			while(clock() - timer < TUNNEL_FRAME_TIME);
@@ -78,7 +78,7 @@ void flt_DoLaunchAnimation()
 		{
 			timer = clock();
 
-			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, 8);	
+			xor_SteppedCircle(VIEW_HCENTER, VIEW_VCENTER, current, step);	
 			gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 
 			while(clock() - timer < TUNNEL_FRAME_TIME);
@@ -86,9 +86,14 @@ void flt_DoLaunchAnimation()
 	}
 }
 
+void flt_DoLaunchAnimation()
+{
+	flt_DoTunnelAnimation(8, false);
+}
+
 void flt_DoHyperspaceAnimation()
 {
-	flt_DoLaunchAnimation(); // placeholder, TODO real animation
+	flt_DoTunnelAnimation(2, true);
 }
 
 void launch()
@@ -238,6 +243,8 @@ void flt_TryHyperdrive()
 	stationSoi = false;
 	drawCycle = 0;
 	gen_ChangeSystem();
+
+	flt_DoHyperspaceAnimation();
 }
 
 void flt_TryInSystemJump()
