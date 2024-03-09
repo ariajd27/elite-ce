@@ -55,11 +55,8 @@ const char productNames[NUM_TRADE_GOODS][13] = {
 	"Alien Items"
 };
 
-struct mkt_localEntry_t {
-	unsigned char price;
-	unsigned char quantity;
-} localEntries[NUM_TRADE_GOODS];
-
+unsigned char mkt_localPrices[NUM_TRADE_GOODS];
+unsigned char mkt_localQuantities[NUM_TRADE_GOODS];
 unsigned char inventory[NUM_TRADE_GOODS];
 
 unsigned char marketSeed;
@@ -68,7 +65,7 @@ void mkt_ResetLocalMarket()
 {
 	for (unsigned char i = 0; i < NUM_TRADE_GOODS; i++)
 	{
-		localEntries[i].price = 
+		mkt_localPrices[i] = 
 			tradeGoods[i].basePrice 
 			+ (marketSeed & tradeGoods[i].mask) 
 			+ thisSystemData.economy * tradeGoods[i].econFactor;
@@ -77,7 +74,7 @@ void mkt_ResetLocalMarket()
 			tradeGoods[i].baseQuantity
 			+ (marketSeed & tradeGoods[i].mask)
 			- thisSystemData.economy * tradeGoods[i].econFactor;
-		localEntries[i].quantity = tempQuantity < 0 ? 0 : tempQuantity % 64;
+		mkt_localQuantities[i] = tempQuantity < 0 ? 0 : tempQuantity % 64;
 	}
 }
 
@@ -100,15 +97,15 @@ void mkt_PrintMarketTable()
 		xor_Print(productNames[i]);
 
 		xor_SetCursorPos(14, y);
-		xor_PrintUInt24(localEntries[i].price * 4 / 10, 3);
+		xor_PrintUInt24(mkt_localPrices[i] * 4 / 10, 3);
 		xor_PrintChar('.');
-		xor_PrintUInt8(localEntries[i].price * 4 % 10, 1);
+		xor_PrintUInt8(mkt_localPrices[i] * 4 % 10, 1);
 		xor_Print(" Cr");
 
-		if (localEntries[i].quantity > 0)
+		if (mkt_localQuantities[i] > 0)
 		{
 			xor_SetCursorPos(24, y);
-			xor_PrintUInt8(localEntries[i].quantity, 2);
+			xor_PrintUInt8(mkt_localQuantities[i], 2);
 			xor_PrintChar(tradeGoods[i].unitSymbol);
 			if (tradeGoods[i].unitSymbol == 'k') xor_PrintChar('g');
 		}
@@ -238,7 +235,7 @@ bool mkt_Buy(unsigned char goodIndex)
 {
 	unsigned char const quantity = mkt_AskForQuantity(goodIndex, true);
 
-	if (quantity > localEntries[goodIndex].quantity) return false; // not enough to buy
+	if (quantity > mkt_localQuantities[goodIndex]) return false; // not enough to buy
 	
 	// check if sufficient cargo hold space available
 	if (tradeGoods[goodIndex].unitSymbol == 't')
@@ -250,11 +247,11 @@ bool mkt_Buy(unsigned char goodIndex)
 		if (inventory[goodIndex] + quantity > 200) return false;
 	}
 
-	unsigned int price = (unsigned int)localEntries[goodIndex].price * quantity * 4;
+	unsigned int price = (unsigned int)mkt_localPrices[goodIndex] * quantity * 4;
 	if (price <= player_money) 
 	{
 		inventory[goodIndex] += quantity;
-		localEntries[goodIndex].quantity -= quantity;
+		mkt_localQuantities[goodIndex] -= quantity;
 		player_money -= price;
 		if (tradeGoods[goodIndex].unitSymbol == 't') player_cargo_space -= quantity;
 		return true;
@@ -280,7 +277,7 @@ bool mkt_Sell(unsigned char crsPos)
 
 	if (quantity > inventory[goodIndex]) return false; // not enough to sell
 
-	player_money += (unsigned int)localEntries[goodIndex].price * quantity * 4;
+	player_money += (unsigned int)mkt_localPrices[goodIndex] * quantity * 4;
 	if (tradeGoods[goodIndex].unitSymbol == 't') player_cargo_space += quantity;
 	inventory[goodIndex] -= quantity;
 	return true;

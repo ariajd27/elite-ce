@@ -410,7 +410,6 @@ void flt_TrySpawnStation()
 	// flip the nose vector so the slot faces the planet
 	station->orientation.a[6] *= -1;
 	station->orientation.a[7] *= -1;
-	station->orientation.a[8] *= -1;
 
 	// make the station spin
 	station->roll = 127;

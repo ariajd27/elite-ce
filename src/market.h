@@ -4,6 +4,7 @@
 #include "variables.h"
 
 extern unsigned char marketSeed;
+extern unsigned char mkt_localQuantities[NUM_TRADE_GOODS];
 extern unsigned char inventory[NUM_TRADE_GOODS];
 
 void mkt_ResetLocalMarket();

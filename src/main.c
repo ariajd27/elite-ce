@@ -613,13 +613,16 @@ void loadGame()
 	ti_Read(&player_upgrades, 1, 1, saveHandle);
 	ti_Read(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
 
-	ti_Close(saveHandle);
-
 	// set map offset and system data cards
 	gen_SetSystemData(&thisSystemData, &currentSeed);
 	gen_SetSystemData(&selectedSystemData, &selectedSeed);
 	gen_ResetDistanceToTarget();
+
+	// set market information BEFORE overwriting local quantities
 	mkt_ResetLocalMarket();
+	ti_Read(&mkt_localQuantities, 1, NUM_TRADE_GOODS, saveHandle);
+
+	ti_Close(saveHandle); // finally done
 
 	// set commander name length for offset routines
 	cmdr_name_length = 0;
@@ -649,6 +652,7 @@ void saveGame()
 	ti_Write(&player_lasers, 1, 1, saveHandle);
 	ti_Write(&player_upgrades, 1, 1, saveHandle);
 	ti_Write(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
+	ti_Write(&mkt_localQuantities, 1, NUM_TRADE_GOODS, saveHandle);
 
 	ti_Close(saveHandle);
 }
