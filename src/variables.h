@@ -85,9 +85,9 @@
 #define TTL_SHIP_END_Z 0x0200
 #define TTL_SHIP_ZOOM_RATE 0x90
 
-#define cmdr_name "JAMESON"
-#define cmdr_name_length 7
 #define CMDR_NAME_MAX_LENGTH 16
+extern char cmdr_name[CMDR_NAME_MAX_LENGTH];
+extern unsigned char cmdr_name_length;
 
 extern unsigned char drawCycle;
 

@@ -7,4 +7,6 @@ extern unsigned char prevYequ, prevGraph, prevUp, prevDown, prevLeft, prevRight,
 void updateKeys();
 void updatePrevKeys();
 
+char getChar();
+
 #endif

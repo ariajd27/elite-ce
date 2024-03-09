@@ -18,6 +18,8 @@
 #include "input.h"
 #include "upgrades.h"
 
+char cmdr_name[CMDR_NAME_MAX_LENGTH];
+unsigned char cmdr_name_length = 0;
 unsigned char saveHandle;
 
 bool toExit = false;
@@ -618,6 +620,10 @@ void loadGame()
 	gen_SetSystemData(&selectedSystemData, &selectedSeed);
 	gen_ResetDistanceToTarget();
 	mkt_ResetLocalMarket();
+
+	// set commander name length for offset routines
+	cmdr_name_length = 0;
+	for (unsigned char i = 0; cmdr_name[i] != '\0'; i++) cmdr_name_length++;
 }
 
 void saveGame()
@@ -647,6 +653,44 @@ void saveGame()
 	ti_Close(saveHandle);
 }
 
+void nameCmdr()
+{
+	gfx_FillScreen(COLOR_BLACK);
+	xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
+	xor_SetCursorPos(1, xor_textRows - 1);
+	xor_Print("Commander Name: ");
+	
+	unsigned char resetX = xor_cursorX; // where we restore the cursor to after pressing CLEAR
+
+	cmdr_name_length = 0;
+	do
+	{
+		gfx_BlitBuffer();
+
+		kb_Scan();
+
+		char typedChar = getChar();
+		if (typedChar != '\0' && cmdr_name_length < CMDR_NAME_MAX_LENGTH)
+		{
+			xor_PrintChar(typedChar);
+			cmdr_name[cmdr_name_length] = typedChar;
+			cmdr_name_length++;
+
+			cmdr_name[cmdr_name_length] = '\0'; // so that the reset writing call can get the length right
+		}
+
+		if (kb_IsDown(kb_KeyClear) && cmdr_name_length > 0)
+		{
+			xor_SetCursorPos(resetX, xor_cursorY);
+			xor_Print(cmdr_name); // reset writing call mentioned above, erases previous name with XOR
+			
+			xor_SetCursorPos(resetX, xor_cursorY); // ready to write the new name
+			cmdr_name_length = 0;
+		}
+	}
+	while (!kb_IsDown(kb_KeyEnter));
+}
+
 bool run()
 {
 	// load the gamestate for the Jameson default save
@@ -669,8 +713,13 @@ bool run()
 
 		// otherwise, the player didn't want to load a saved game, so do nothing--
 		// the Jameson default save is already loaded. this is the same outcome as
-		// if no save had been found in the first place	
+		// if no save had been found in the first place
+
+		// in either possible case where we don't load a save, we should let the
+		// player name the commander!
+		else nameCmdr();
 	}
+	else nameCmdr();
 
 	// this is the title screen that is always shown
 	if (titleScreen(BP_MAMBA, "Press ENTER, CMDR.", 18, true) == 2) return false;

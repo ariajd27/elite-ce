@@ -26,7 +26,14 @@
 unsigned char player_speed;
 signed char player_roll;
 signed char player_pitch;
+
 unsigned char player_altitude;
+unsigned char player_cabin_temp;
+
+unsigned char player_energy;
+unsigned char player_fore_shield;
+unsigned char player_aft_shield;
+unsigned char player_laser_temp;
 
 enum viewDirMode_t viewDirMode;
 enum player_condition_t player_condition;
@@ -38,7 +45,14 @@ void flt_Init()
 	player_speed = 0;
 	player_roll = 0;
 	player_pitch = 0;
+
 	player_altitude = 96;
+	player_cabin_temp = 0;
+
+	player_energy = 255;
+	player_fore_shield = 255;
+	player_aft_shield = 255;
+	player_laser_temp = 0;
 
 	viewDirMode = FRONT;
 	player_condition = DOCKED;
@@ -222,11 +236,42 @@ void drawDashboard()
 	else if (pitchBarOffset == -16) pitchBarOffset++;
 	gfx_FillRectangle(DASH_HOFFSET_RIGHT + 20 + pitchBarOffset, DASH_VOFFSET + 18, 2, 3);
 
+	// energy banks
+	unsigned char remainingEnergy = player_energy / 2;
+	unsigned char barY = DASH_VOFFSET + 50;
+	while (remainingEnergy > 0)
+	{
+		const unsigned char thisEnergy = remainingEnergy < 32 ? remainingEnergy : 32;
+
+		gfx_SetColor(thisEnergy <= 4 ? COLOR_RED : COLOR_YELLOW);
+		gfx_FillRectangle(DASH_HOFFSET_RIGHT + 4, barY, thisEnergy, 3);
+
+		remainingEnergy -= thisEnergy;
+		barY -= 8;
+	}
+	if (player_energy == 255) gfx_FillRectangle(DASH_HOFFSET_RIGHT + 35, DASH_VOFFSET + 26, 1, 3);
+
 	// left panel
+	// fore shield display
+	gfx_SetColor(player_fore_shield < 64 ? COLOR_RED : COLOR_YELLOW);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 2, player_fore_shield / 8 + 1, 3);
+
+	// aft shield display
+	gfx_SetColor(player_aft_shield < 64 ? COLOR_RED : COLOR_YELLOW);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 10, player_aft_shield / 8 + 1, 3);
+
 	// fuel display
 	gfx_SetColor(COLOR_YELLOW);
 	const unsigned char fuelBarLength = player_fuel <= 64 ? player_fuel / 2 : 32;
 	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 18, fuelBarLength, 3);
+
+	// cabin temp display
+	gfx_SetColor(player_cabin_temp > 192 ? COLOR_RED : COLOR_YELLOW);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 26, player_cabin_temp / 4, 3);
+
+	// laser temp display
+	gfx_SetColor(player_laser_temp > 192 ? COLOR_RED : COLOR_YELLOW);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 34, player_laser_temp / 4, 3);	
 
 	// altitude display
 	gfx_SetColor(player_altitude < 32 ? COLOR_RED : COLOR_YELLOW);
