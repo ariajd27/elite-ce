@@ -241,8 +241,8 @@ void DoAI(unsigned char shipIndex)
 		case BP_CANISTER:
 		case BP_ASTEROID:
 		case BP_CORIOLIS:
-		case BP_PLANET:
-		case BP_SUN: return;
+		case PLANET:
+		case SUN: return;
 		default: break;
 	}
 
@@ -263,12 +263,18 @@ void DoAI(unsigned char shipIndex)
 	if (ships[shipIndex].shipType == BP_MISSILE)
 	{
 		// missiles head towards their target
-		goVector = sub(ships[shipIndex].position, ships[ships[shipIndex].target].position);
+		goVector = sub(ships[ships[shipIndex].target].position, ships[shipIndex].position);
 	}
 	else if (ships[shipIndex].isHostile)
 	{
-		// most things head towards / away from the player
+		// most things head away from the player (but can switch to towards)
 		goVector = ships[shipIndex].position;
+
+		// if not too close and feeling aggressive, we go towards the player. otherwise away.
+		if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)
+		{
+			if (rand() % 128 < ships[shipIndex].aggro) goVector = mul(goVector, -1);
+		}
 	}
 	else
 	{
@@ -278,23 +284,7 @@ void DoAI(unsigned char shipIndex)
 		goVector = sub(ships[i].position, ships[shipIndex].position);
 	}
 
-	signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
-
-	// if not too close and feeling aggressive, set target towards player instead
-	// missiles are always hostile, so this always flips the vector. that's why we set
-	// the missile's go vector to (missile - target) instead of (target - missile) above.
-	if (ships[shipIndex].isHostile == true)
-	{
-		if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)
-		{
-			unsigned char const a = rand() % 128;
-			if (a < ships[shipIndex].aggro)
-			{
-				goVector = mul(goVector, -1);
-				goAlign *= -1;
-			}
-		}
-	}
+	const signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
 
 	// pitch is simple
 	ships[shipIndex].pitch = -3 * dot(goVector, getRow(ships[shipIndex].orientation, 1));

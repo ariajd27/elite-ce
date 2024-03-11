@@ -224,7 +224,7 @@ void xor_FillRectangle(signed int x, signed int y, unsigned int width, unsigned 
 {
 	if (x < xor_clipX)
 	{
-		if (x + width < xor_clipX) return;
+		if ((signed int)(x + width) < (signed int)xor_clipX) return;
 		xor_FillRectangle(xor_clipX, y, width - (xor_clipX - x), height);
 		return;
 	}
