@@ -18,7 +18,8 @@ struct Ship
 	struct vector_t position;
 	struct intmatrix_t orientation;
 
-	bool isHostile;
+	bool isHostile : 1;
+	bool hasEcm : 1;
 	unsigned char aggro;
 	unsigned char target;
 

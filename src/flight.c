@@ -38,6 +38,9 @@ unsigned char player_laser_temp;
 enum viewDirMode_t viewDirMode;
 enum player_condition_t player_condition;
 
+unsigned char junkAmt;
+unsigned char extraSpawnDelay;
+
 bool stationSoi;
 
 void flt_Init()
@@ -48,6 +51,8 @@ void flt_Init()
 
 	player_altitude = 96;
 	player_cabin_temp = 0;
+
+	player_missiles = 3;
 
 	player_energy = 255;
 	player_fore_shield = 255;
@@ -60,7 +65,7 @@ void flt_Init()
 	stationSoi = true;
 }
 
-void flt_DoTunnelAnimation(unsigned char step, bool color)
+void flt_DoTunnelAnimation(unsigned char step)
 {
 	gfx_SetColor(COLOR_BLACK);
 	gfx_FillRectangle(xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
@@ -102,12 +107,12 @@ void flt_DoTunnelAnimation(unsigned char step, bool color)
 
 void flt_DoLaunchAnimation()
 {
-	flt_DoTunnelAnimation(8, false);
+	flt_DoTunnelAnimation(8);
 }
 
 void flt_DoHyperspaceAnimation()
 {
-	flt_DoTunnelAnimation(2, true);
+	flt_DoTunnelAnimation(2);
 }
 
 void launch()
@@ -287,6 +292,8 @@ void flt_TryHyperdrive()
 
 	stationSoi = false;
 	drawCycle = 0;
+	junkAmt = 0;
+	extraSpawnDelay = 0;
 	gen_ChangeSystem();
 
 	flt_DoHyperspaceAnimation();
@@ -296,30 +303,24 @@ void flt_TryInSystemJump()
 {
 	if (stationSoi) return; // definitely too close
 
-	// check for enemies nearby
+	// check for other ships
 	for (unsigned char i = 0; i < numShips; i++)
 	{
-		if (ships[i].isHostile) return; // interference!
+		if (ships[i].shipType < BP_ASTEROID) return; // interference!
 	}
 
-	// find the planet
-	for (unsigned char i = 0; i < numShips; i++)
-	{
-		if (ships[i].shipType != PLANET) continue;
+	// find the sun and planet
+	unsigned char sunIndex = 0;
+	while (ships[sunIndex].shipType != SUN) sunIndex++;
+	unsigned char planetIndex = 0;
+	while (ships[planetIndex].shipType != PLANET) planetIndex++;
 
-		if (ships[i].position.z < 0x020000) return; // not facing planet or too close
-
-		ships[i].position.z -= 0x010000; // do the jump
-	}
-
-	// we did jump, but now we need to move the sun, too
-	// find the sun
-	for (unsigned char i = 0; i < numShips; i++)
-	{
-		if (ships[i].shipType != SUN) continue;
-
-		ships[i].position.z -= 0x010000; // move the sun
-	}
+	// if both sun and planet are too close, the jump is impossible
+	if (ships[sunIndex].position.z < 0x020000 && ships[planetIndex].position.z < 0x020000) return;
+	
+	// do the jump
+	ships[planetIndex].position.z -= 0x010000;
+	ships[sunIndex].position.z -= 0x010000;
 
 	drawCycle = 0; // stimulate some enemies to spawn!
 }
@@ -492,6 +493,81 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 	return 2;
 }
 
+void flt_TrySpawnShips()
+{
+	if (stationSoi) return; // nothing spawns in the safe zone!
+	if (numShips == MAX_SHIPS) return; // already full!
+
+	struct vector_t spawnPos = { rand() % 256, rand() % 256, 38 * 256 };
+	if (rand() % 2) spawnPos.x += 512;	
+	if (spawnPos.x & 0x80) spawnPos.x = -spawnPos.x;
+	if (spawnPos.y & 0x80) spawnPos.y = -spawnPos.y;
+
+	if (rand() % 256 < 35)
+	{
+		// spawn some junk
+
+		if (junkAmt >= 3) return; // too much junk already
+	
+		unsigned char junkType = rand() % 2 ? BP_COBRA
+							   : rand() % 256 < 10 ? BP_CANISTER
+							   : BP_ASTEROID;
+
+
+		struct Ship* junk = NewShip(junkType, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
+
+		const signed char rollRand = (rand() % 128) | 0x6f;
+		junk->roll = rand() % 2 ? rollRand : -rollRand;
+
+		// we can't set both pitch and speed or else the junk will have a curved path (strange)
+		if (rand() % 2) junk->speed = rand() % 16 + 16; // in range 16-31
+		else junk->pitch = rand() % 2 ? 127 : -128; // max pitch, either up or down
+
+		if (junkType != BP_COBRA) junkAmt++; // the cobra will fly away by itself, but we
+											 // don't want canisters and rocks to build up
+	}
+	else
+	{
+		// check for cops scanning the player
+		bool copNearby = false;
+		for (unsigned char i = 0; i < numShips; i++) if (ships[i].shipType == BP_VIPER) copNearby = true;
+		if (copNearby) mkt_GetScanned();
+
+		// check for spawning a cop
+		if (rand() % 256 < player_outlaw)
+		{
+			struct Ship* cop = NewShip(BP_VIPER, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
+			cop->isHostile = true;
+			
+			return;
+		}
+
+		// check if in grace period for enemies to spawn
+		if (extraSpawnDelay > 0)
+		{
+			extraSpawnDelay--;
+			return;
+		}
+
+		// check government type to spawn an enemy
+		if ((rand() & 0x07) >= thisSystemData.government) return;
+
+		// try spawning a bounty hunter
+		if ((rand() % 256) < 100)
+		{
+			extraSpawnDelay++;
+			
+			struct Ship* enemy = NewShip(BP_COBRA, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
+			enemy->isHostile = true;
+			enemy->aggro = 28;
+			
+			return;
+		}
+
+		// if no bounty hunter, spawn pirates
+	}
+}
+
 void flt_DoFrame(bool dashboardVisible)
 {
 	// black background
@@ -502,6 +578,7 @@ void flt_DoFrame(bool dashboardVisible)
 	gfx_Rectangle(DASH_HOFFSET, 0, GFX_LCD_WIDTH - 2 * DASH_HOFFSET, GFX_LCD_HEIGHT - dashleft_height);
 
 	// periodic updates
+	if (drawCycle == 0) flt_TrySpawnShips(); // no need for "% 256" because drawCycle is a uint8
 	if (!stationSoi && drawCycle % 64 == 0) flt_TrySpawnStation();
 	if (drawCycle % 8 == 0) flt_UpdatePlayerAltitude();
 
@@ -634,6 +711,4 @@ void flt_Death()
 
 		gfx_BlitBuffer();
 	}
-
-	// TODO find a way to kick all the way back out of the game
 }

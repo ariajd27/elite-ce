@@ -20,8 +20,10 @@
 #define DASH_VOFFSET (GFX_LCD_HEIGHT - DASH_HEIGHT)
 #define DASH_HOFFSET_CENTER (DASH_HOFFSET + dashleft_width)
 #define DASH_HOFFSET_RIGHT (DASH_HOFFSET + dashleft_width + dashcenter_width)
+
 #define SOI_INDIC_POS_X (DASH_HOFFSET + dashleft_width + 142)
 #define SOI_INDIC_POS_Y (DASH_VOFFSET + 42)
+
 #define COMPASS_HCENTER (DASH_HOFFSET_CENTER + 145)
 #define COMPASS_VCENTER (DASH_VOFFSET + 10)
 #define COMPASS_SCALE (256 / 9)
@@ -80,12 +82,13 @@
 #define PLAYER_MAX_SPEED 0x1c
 
 #define TTL_SHIP_ONE BP_COBRA
-#define TTL_SHIP_TWO BP_MAMBA
+#define TTL_SHIP_TWO BP_VIPER
 #define TTL_SHIP_START_Z 0x1200
 #define TTL_SHIP_END_Z 0x0200
 #define TTL_SHIP_ZOOM_RATE 0x90
 
 #define CMDR_NAME_MAX_LENGTH 16
+
 extern char cmdr_name[CMDR_NAME_MAX_LENGTH];
 extern unsigned char cmdr_name_length;
 

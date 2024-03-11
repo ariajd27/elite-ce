@@ -298,3 +298,8 @@ void mkt_AdjustLegalStatus()
 				  // 2 *   narcotics  +   firearms
 	player_outlaw |= 2 * inventory[6] + inventory[10];
 }
+
+void mkt_GetScanned()
+{
+	player_outlaw |= 2 * (2 * inventory[6] + inventory[10]);
+}

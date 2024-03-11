@@ -236,8 +236,15 @@ void DrawShip(unsigned char shipIndex)
 
 void DoAI(unsigned char shipIndex)
 {
-	if (ships[shipIndex].shipType > BP_ESCAPEPOD) return;
-	if (ships[shipIndex].shipType == BP_CORIOLIS) return;
+	switch (ships[shipIndex].shipType)
+	{
+		case BP_CANISTER:
+		case BP_ASTEROID:
+		case BP_CORIOLIS:
+		case BP_PLANET:
+		case BP_SUN: return;
+		default: break;
+	}
 
 	if (ships[shipIndex].position.x > 224 * 256 
 			|| ships[shipIndex].position.y > 224 * 256 
@@ -258,7 +265,7 @@ void DoAI(unsigned char shipIndex)
 		// missiles head towards their target
 		goVector = sub(ships[shipIndex].position, ships[ships[shipIndex].target].position);
 	}
-	else if (ships[shipIndex].shipType != BP_ESCAPEPOD)
+	else if (ships[shipIndex].isHostile)
 	{
 		// most things head towards / away from the player
 		goVector = ships[shipIndex].position;
@@ -342,7 +349,7 @@ void MoveShip(unsigned char shipIndex)
 	// move ship along nose vector
 	struct vector_t const noseVector = getRow(ships[shipIndex].orientation, 2);
 	ships[shipIndex].position = add(ships[shipIndex].position, 
-			sDiv(mul(noseVector, ships[shipIndex].speed), 64));
+			sDiv(mul(noseVector, -ships[shipIndex].speed), 64));
 
 	// apply acceleration, clamping between 0 and max speed for ship type
 	if (ships[shipIndex].acceleration > 0 || ships[shipIndex].speed >= -1 * ships[shipIndex].acceleration)
