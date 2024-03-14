@@ -9,7 +9,11 @@ bool yequ,
 	 enter, 
 	 math, 
 	 vars, 
-	 clear;
+	 clear,
+	 mode,
+	 del,
+	 graphVar,
+	 stat;
 unsigned char prevYequ, 
 			  prevGraph, 
 			  prevUp, 
@@ -19,7 +23,11 @@ unsigned char prevYequ,
 			  prevEnter, 
 			  prevMath, 
 			  prevVars, 
-			  prevClear;
+			  prevClear,
+			  prevMode,
+			  prevDel,
+			  prevGraphVar,
+			  prevStat;
 
 char prevData[8];
 
@@ -37,6 +45,10 @@ void updateKeys()
 	math = kb_IsDown(kb_KeyMath);
 	vars = kb_IsDown(kb_KeyVars);
 	clear = kb_IsDown(kb_KeyClear);
+	mode = kb_IsDown(kb_KeyMode);
+	del = kb_IsDown(kb_KeyDel);
+	graphVar = kb_IsDown(kb_KeyGraphVar);
+	stat = kb_IsDown(kb_KeyStat);
 }
 
 void updatePrevKeys()
@@ -51,6 +63,10 @@ void updatePrevKeys()
 	prevMath = math ? prevMath + 1 : 0;
 	prevVars = vars ? prevVars + 1 : 0;
 	prevClear = clear ? prevClear + 1 : 0;
+	prevMode = mode ? prevMode + 1 : 0;
+	prevDel = del ? prevDel + 1 : 0;
+	prevGraphVar = graphVar ? graphVar + 1 : 0;
+	prevStat = stat ? prevStat + 1 : 0;
 }
 
 char getChar()

@@ -8,6 +8,8 @@
 #include "generation.h"
 #include "flight.h"
 
+#include <debug.h>
+
 struct Ship ships[MAX_SHIPS];
 
 unsigned char numShips = 0;
@@ -33,7 +35,7 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 	ships[numShips].numEdges = bp_header_vectors[shipType][BP_GENERAL][BP_EDGE_Q_IND];
 	ships[numShips].numFaces = bp_header_vectors[shipType][BP_GENERAL][BP_FACE_L_IND] / BP_L_FACE;
 
-	ships[numShips].explosionSize = 18;
+	ships[numShips].explosionSize = EXPLOSION_START_SIZE;
 	ships[numShips].explosionCount = bp_header_vectors[shipType][BP_GENERAL][BP_EXPLCT_IND];
 	// ships[numShips].explosionRand not initialized
 
@@ -41,6 +43,8 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 	ships[numShips].acceleration = 0;
 	ships[numShips].pitch = 0;
 	ships[numShips].roll = 0;
+
+	ships[numShips].energy = bp_header_vectors[shipType][BP_GENERAL][BP_MAX_ENERGY];
 
 	numShips++;
 	return &ships[numShips - 1];
@@ -76,6 +80,80 @@ struct int_point_t ProjPoint(struct vector_t toProject)
 	return output;
 }
 
+// this is used by both the wireframe and explosion drawing algorithms
+struct int_point_t ProjVertex(const unsigned char shipIndex,
+							  const unsigned char vertexIndex,
+							  const struct intmatrix_t transformation)
+{
+	const unsigned char* vertexData = 
+		bp_header_vectors[ships[shipIndex].shipType][BP_VERTICES] + vertexIndex * BP_L_VERT;
+
+	const struct vector_t vertexVector = {
+		(vertexData[3] & 0b10000000) != 0 ? -1 * vertexData[0] : vertexData[0],
+		(vertexData[3] & 0b01000000) != 0 ? -1 * vertexData[1] : vertexData[1],
+		(vertexData[3] & 0b00100000) != 0 ? vertexData[2] : -1 * vertexData[2]
+	};
+
+	return ProjPoint(add(vMul(transformation, vertexVector), ships[shipIndex].position));
+}
+
+void ShipAsExplosion(unsigned char shipIndex)
+{
+	// the cloud expands each time it's drawn
+	ships[shipIndex].explosionSize += EXPLOSION_GROW_RATE;
+
+	// if we've overflowed, the explosion is over, so get rid of the ship
+	if (ships[shipIndex].explosionSize < EXPLOSION_START_SIZE)
+	{
+		RemoveShip(shipIndex);
+		return;
+	}
+
+	// save the main program's seed -- we reseed it here
+	const unsigned int savedSeed = rand() % 0xffffff;
+
+	// this is needed for vector projections
+	const struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
+
+	// make the cloud larger on-screen if actually bigger, but smaller if more distant
+	const unsigned char drawnSize = 
+		EXPLOSION_SCALE * ships[shipIndex].explosionSize / ships[shipIndex].position.z;
+
+	// how many particles are we drawing per vertex?
+	unsigned char particleCt = ships[shipIndex].explosionSize;
+	if (particleCt >= 128) particleCt ^= 0xff; // flip all bits, so we count up to 128 then back down
+	particleCt /= ships[shipIndex].explosionCount;
+	if (particleCt < 1) particleCt = 1;
+
+	// iterate through all vertices flagged for explosion particle drawing
+	for (unsigned char i = 0; i < ships[shipIndex].explosionCount; i++)
+	{
+		dbg_printf("drawing particles for vertex %u...\n", i);
+
+		// get the random seed *for this vertex*
+		srand(ships[shipIndex].explosionRand ^ i * 173);
+
+		// where is this vertex on the screen?
+		const struct int_point_t vertexPos = ProjVertex(shipIndex, i, transformation);
+
+		dbg_printf("vertex position: %d, %d\n", vertexPos.x, vertexPos.y);
+
+		// iterate through all the particles to draw for this vertex
+		for (unsigned char j = 0; j < particleCt; j++)
+		{
+			const signed int x = vertexPos.x + (signed int)(rand() % 256 - 128) * drawnSize / 256;
+			const signed int y = vertexPos.y + (signed int)(rand() % 256 - 128) * drawnSize / 256;
+
+			dbg_printf("particle at %d, %d\n", x, y);
+
+			xor_FillRectangle(x, y, EXPLOSION_PARTICLE_SIZE, EXPLOSION_PARTICLE_SIZE);
+		}
+	}
+
+	// recover the main program's seed
+	srand(savedSeed);
+}
+
 void ShipAsPoint(unsigned char shipIndex)
 {
 	struct int_point_t screenPoint = ProjPoint(ships[shipIndex].position);
@@ -91,7 +169,7 @@ void ShipAsWireframe(unsigned char shipIndex)
 	unsigned char distance = ships[shipIndex].position.z >> 8;
 	if (distance > 31) distance = 31;
 
-	struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
+	const struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
 
 	// backface culling
 	unsigned int faceVisible;
@@ -151,19 +229,9 @@ void ShipAsWireframe(unsigned char shipIndex)
 		for (unsigned char j = 2; j <= 3; j++) 
 		{
 			if (vertices[edgeData[j] >> 2].calculated) continue;
-			
-			unsigned char* vertexData = bp_header_vectors[ships[shipIndex].shipType][BP_VERTICES] 
-				+ (edgeData[j] >> 2) * BP_L_VERT;
 
-			struct vector_t vertexVector = {
-				(vertexData[3] & 0b10000000) != 0 ? -1 * vertexData[0] : vertexData[0],
-				(vertexData[3] & 0b01000000) != 0 ? -1 * vertexData[1] : vertexData[1],
-				(vertexData[3] & 0b00100000) != 0 ? vertexData[2] : -1 * vertexData[2]
-			};
-
-			vertexVector = add(vMul(transformation, vertexVector), ships[shipIndex].position);
-
-			vertices[edgeData[j] >> 2].screenPosition = ProjPoint(vertexVector);
+			vertices[edgeData[j] >> 2].screenPosition = 
+				ProjVertex(shipIndex, edgeData[j] >> 2, transformation);
 			vertices[edgeData[j] >> 2].calculated = true;
 		}
 
@@ -207,17 +275,25 @@ void DrawShip(unsigned char shipIndex)
 {
 	if (ships[shipIndex].toExplode)
 	{
+		// if we flagged starting an explosion, we need to set up
+		// that explosion before doing anything else
+
 		ships[shipIndex].laserFiring = false;
 		ships[shipIndex].toExplode = false;
 		ships[shipIndex].isExploding = true;
 		ships[shipIndex].acceleration = 0;
 		ships[shipIndex].pitch = 0;
+		ships[shipIndex].roll = 0;
 
-		for (unsigned char i = 0; i < 4; i++) ships[shipIndex].explosionRand[i] = rand();
+		// let's get us a seed!
+		ships[shipIndex].explosionRand = rand() % 256;
 	}
 
 	if (ships[shipIndex].position.z <= 0) return;
 
+	// suns and planets jump off the bus earlier, because since they can be so large,
+	// they need to be drawn even if they're way off screen bc they might spill over into
+	// the screen anyway
 	if (ships[shipIndex].shipType > BP_ESCAPEPOD)
 	{
 		ShipAsBody(shipIndex);
@@ -229,13 +305,20 @@ void DrawShip(unsigned char shipIndex)
 	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
 	if (ships[shipIndex].position.y < -1 * ships[shipIndex].position.z) return;
-
-	if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	
+	// finally, the three main ways to draw a ship:
+	// if it's exploding, as a cloud of dust
+	if (ships[shipIndex].isExploding) ShipAsExplosion(shipIndex);
+	// if it's far away, as a dot
+	else if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	// otherwise, as a beautiful 3d wireframe
 	else ShipAsWireframe(shipIndex);
 }
 
 void DoAI(unsigned char shipIndex)
 {
+	return; // JUST FOR TESTING TO DISABLE AI
+
 	switch (ships[shipIndex].shipType)
 	{
 		case BP_CANISTER:
@@ -433,5 +516,19 @@ void RestoreAxes(enum viewDirMode_t viewDirMode)
 			break;
 		case RIGHT:
 			FlipAxes(LEFT);
+	}
+}
+
+void DamageShip(unsigned char shipIndex, unsigned char damage)
+{
+	if (ships[shipIndex].energy <= damage)
+	{
+		ships[shipIndex].toExplode = true;
+		ships[shipIndex].energy = 0;
+	}
+	else
+	{
+		ships[shipIndex].energy -= damage;
+		ships[shipIndex].isHostile = true; // don't shoot the station, or else!
 	}
 }

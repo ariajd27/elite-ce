@@ -46,7 +46,7 @@ void xor_VerticalLine(unsigned int x, unsigned char y0, unsigned char y1)
 		return;
 	}
 
-	for (unsigned char y = y0; y <= y1; y++) xor_PointNoClip(x, y);
+	for (unsigned char y = y0; y < y1; y++) xor_PointNoClip(x, y);
 }
 
 void xor_HorizontalLine(unsigned char y, unsigned int x0, unsigned int x1)
@@ -57,7 +57,7 @@ void xor_HorizontalLine(unsigned char y, unsigned int x0, unsigned int x1)
 		return;
 	}
 
-	for (unsigned int x = x0; x <= x1; x++) xor_PointNoClip(x, y);
+	for (unsigned int x = x0; x < x1; x++) xor_PointNoClip(x, y);
 }
 
 void xor_LineLow(unsigned int x0, unsigned char y0, unsigned int x1, unsigned char y1)
@@ -73,7 +73,7 @@ void xor_LineLow(unsigned int x0, unsigned char y0, unsigned int x1, unsigned ch
 
 	int D = 2 * dy - dx;
 	unsigned char y = y0;
-	for (unsigned int x = x0; x <= x1 && x < xor_clipX + xor_clipWidth; x++)
+	for (unsigned int x = x0; x < x1 && x < xor_clipX + xor_clipWidth; x++)
 	{
 		xor_PointNoClip(x, y);
 
@@ -103,7 +103,7 @@ void xor_LineHigh(unsigned int x0, unsigned char y0, unsigned int x1, unsigned c
 
 	int D = 2 * dx - dy;
 	unsigned int x = x0;
-	for (unsigned char y = y0; y <= y1 && y < xor_clipY + xor_clipHeight; y++)
+	for (unsigned char y = y0; y < y1 && y < xor_clipY + xor_clipHeight; y++)
 	{
 		xor_PointNoClip(x, y);
 
@@ -274,16 +274,6 @@ void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned ch
 		const signed int newX = cX + trig_cos(i) * (signed int)r / 256;
 		const signed int newY = cY - trig_sin(i) * (signed int)r / 256;
 
-		if (i != 0)
-		{
-			if (newX >= (signed int)xor_clipX
-				&& newX < (signed int)(xor_clipX + xor_clipWidth)
-				&& newY >= (signed int)xor_clipY
-				&& newY < (signed int)(xor_clipY + xor_clipHeight))
-			{
-				xor_Point(newX, newY); // inefficiently beating the XOR logic
-			}
-		}
 		xor_Line(lastX, lastY, newX, newY);
 
 		lastX = newX;
@@ -337,16 +327,6 @@ void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, sig
 		const signed int newX = cX + uX * trig_cos(i) / 256 + vX * trig_sin(i) / 256;
 		const signed int newY = cY + uY * trig_cos(i) / 256 + vY * trig_sin(i) / 256;
 
-		if (i != 0)
-		{
-			if (newX >= (signed int)xor_clipX
-				&& newX < (signed int)(xor_clipX + xor_clipWidth)
-				&& newY >= (signed int)xor_clipY
-				&& newY < (signed int)(xor_clipY + xor_clipHeight))
-			{
-				xor_Point(newX, newY);
-			}
-		}
 		xor_Line(lastX, lastY, newX, newY);
 
 		lastX = newX;

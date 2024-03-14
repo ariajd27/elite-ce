@@ -34,12 +34,14 @@ struct Ship
 
 	unsigned char explosionSize;
 	unsigned char explosionCount;
-	unsigned char explosionRand[4];
+	unsigned char explosionRand;
 
 	unsigned char speed;
 	signed char acceleration;
 	signed char pitch;
 	signed char roll;
+	
+	unsigned char energy;
 };
 
 extern struct Ship ships[MAX_SHIPS];
@@ -65,5 +67,7 @@ void RotateShip(signed int* x, signed int* y, signed char amount);
 void MoveShip(unsigned char shipIndex);
 void FlipAxes(enum viewDirMode_t viewDirMode);
 void RestoreAxes(enum viewDirMode_t viewDirMode);
+
+void DamageShip(unsigned char shipIndex, unsigned char damage);
 
 #endif

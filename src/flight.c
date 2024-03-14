@@ -33,7 +33,11 @@ unsigned char player_cabin_temp;
 unsigned char player_energy;
 unsigned char player_fore_shield;
 unsigned char player_aft_shield;
+
 unsigned char player_laser_temp;
+bool player_laser_overheat;
+unsigned char laserPulseCounter;
+bool drawLasers;
 
 enum viewDirMode_t viewDirMode;
 enum player_condition_t player_condition;
@@ -50,14 +54,17 @@ void flt_Init()
 	player_pitch = 0;
 
 	player_altitude = 96;
-	player_cabin_temp = 0;
+	player_cabin_temp = 30;
 
 	player_missiles = 3;
 
 	player_energy = 255;
 	player_fore_shield = 255;
 	player_aft_shield = 255;
+
 	player_laser_temp = 0;
+	player_laser_overheat = false;
+	laserPulseCounter = 0;
 
 	viewDirMode = FRONT;
 	player_condition = DOCKED;
@@ -127,6 +134,7 @@ void launch()
 	struct Ship* station = NewShip(BP_CORIOLIS,
 								   (struct vector_t){ 0, 0, -256 },
 								   Matrix(256,0,0, 0,256,0, 0,0,-256));
+	station->hasEcm = true;
 	station->roll = 127;
 
 	// spawn planet
@@ -272,11 +280,11 @@ void drawDashboard()
 
 	// cabin temp display
 	gfx_SetColor(player_cabin_temp > 192 ? COLOR_RED : COLOR_YELLOW);
-	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 26, player_cabin_temp / 4, 3);
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 26, player_cabin_temp / 8, 3);
 
 	// laser temp display
 	gfx_SetColor(player_laser_temp > 192 ? COLOR_RED : COLOR_YELLOW);
-	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 34, player_laser_temp / 4, 3);	
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 34, player_laser_temp / 8, 3);	
 
 	// altitude display
 	gfx_SetColor(player_altitude < 32 ? COLOR_RED : COLOR_YELLOW);
@@ -323,6 +331,77 @@ void flt_TryInSystemJump()
 	ships[sunIndex].position.z -= 0x010000;
 
 	drawCycle = 0; // stimulate some enemies to spawn!
+}
+
+void flt_TryLasers()
+{
+	if (player_laser_overheat)
+	{
+		player_laser_overheat = player_laser_temp > 0;
+		return;
+	}
+
+	if (player_laser_temp >= 242)
+	{
+		player_laser_overheat = true;
+		return;
+	}
+
+	// there are only lasers on the front and back of the ship
+	if (viewDirMode == LEFT || viewDirMode == RIGHT) return;
+
+	// if we're shooting out the back, make sure the game realizes
+	FlipAxes(viewDirMode);
+
+	// if we have pulse lasers, make 'em pulse!
+	if (laserPulseCounter > 0) return;
+	if (player_lasers == PULSE) laserPulseCounter += PULSE_LASER_INTERVAL;
+
+	// actually shoot: first step, pay to fire the lasers
+	player_laser_temp += 8;
+	player_energy -= 1;
+
+	// laser lines can't be drawn here due to blit timings --- just set a flag to do it later
+	drawLasers = true;
+
+	// how much damage will we do if we hit?
+	unsigned char const laserPower = 255; // TODO come up with a real number
+
+	// find any ships hit and deal that much damage
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		if (ships[i].position.z <= 0) continue; // not even in front of us
+	
+		// one does not simply shoot the sun
+		if (ships[i].shipType == PLANET) continue;
+		if (ships[i].shipType == SUN) continue;
+
+		if (ships[i].isExploding) continue; // it's already dead, man!
+
+		// is it even close enough to hit?
+		if ((ships[i].position.x | ships[i].position.y) > LASER_MAX_RANGE) continue;
+
+		// what is the ships's targetable area?
+		const unsigned char* bpGeneral = bp_header_vectors[ships[i].shipType][BP_GENERAL];
+		const unsigned int areaSquared = (bpGeneral[2] << 8) + bpGeneral[1];
+
+		// now we can finally check the angle
+		const unsigned int offsetSquared = ships[i].position.x * ships[i].position.x
+										 + ships[i].position.y * ships[i].position.y;
+
+		if (offsetSquared > areaSquared) continue; // we missed
+
+		// if we made it down here, we hit ship i!!! yay!!!
+		DamageShip(i, laserPower);
+	}
+
+	// put the axes back
+	RestoreAxes(viewDirMode);
+}
+
+void flt_TryMissile()
+{
+	// TODO
 }
 
 bool doFlightInput()
@@ -374,8 +453,13 @@ bool doFlightInput()
 		else if (player_roll > 0) player_roll--;	
 	}
 
+	// engine controls
 	if (clear && prevClear == 0) flt_TryHyperdrive();
 	else if (vars && prevVars == 0) flt_TryInSystemJump();
+
+	// weapons
+	if (mode) flt_TryLasers();
+	if (graphVar && prevGraphVar == 0) flt_TryMissile();
 
 	updatePrevKeys();
 
@@ -462,7 +546,38 @@ void flt_UpdatePlayerAltitude()
 	}
 }
 
+void flt_UpdateCabinTemperature() // also handles fuel scooping
+{
+	// in case we kick out early, we need a default value
+	player_cabin_temp = 30;
+
+	if (stationSoi) return; // this prevents infinite searches for nonexistent suns,
+							// and safely bc the station will always be far enough from
+							// the sun to not need a temp check
+
+	// find the sun
+	unsigned char sunIndex = 0;
+	while (ships[sunIndex].shipType != SUN) sunIndex++;
+
+
+	unsigned int const sunX = intabs(ships[sunIndex].position.x) >> 8;
+	unsigned int const sunY = intabs(ships[sunIndex].position.y) >> 8;
+	unsigned int const sunZ = intabs(ships[sunIndex].position.z) >> 8;
+
+	if (sunX > 256 || sunY > 256 || sunZ > 256) return; // if we are going to overflow on the multiplication,
+														// we're too far away for this to matter anyway.
+
+	unsigned int sunDistance = sunX * sunX + sunY * sunY + sunZ * sunZ;
+	if (sunDistance > 256) return; // again, if it doesn't fit in a byte, too far, so kick out
+	
+	player_cabin_temp += sunDistance ^ 0xff;
+
+	// if we overflowed, the cabin temp will have mysteriously reduced itself
+	if (player_cabin_temp < 30) flt_Death();
+}
+
 // these checks are pretty damn generous, but that's probably good for testing
+// returns 0 for success, 1 for failure, 2 for death
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
 	if (player_speed == 0)
@@ -493,15 +608,20 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 	return 2;
 }
 
-void flt_TrySpawnShips()
+struct vector_t flt_GetSpawnPos()
 {
-	if (stationSoi) return; // nothing spawns in the safe zone!
-	if (numShips == MAX_SHIPS) return; // already full!
-
 	struct vector_t spawnPos = { rand() % 256, rand() % 256, 38 * 256 };
 	if (rand() % 2) spawnPos.x += 512;	
 	if (spawnPos.x & 0x80) spawnPos.x = -spawnPos.x;
 	if (spawnPos.y & 0x80) spawnPos.y = -spawnPos.y;
+
+	return spawnPos;
+}
+
+void flt_TrySpawnShips()
+{
+	if (stationSoi) return; // nothing spawns in the safe zone!
+	if (numShips == MAX_SHIPS) return; // already full!
 
 	if (rand() % 256 < 35)
 	{
@@ -513,9 +633,10 @@ void flt_TrySpawnShips()
 							   : rand() % 256 < 10 ? BP_CANISTER
 							   : BP_ASTEROID;
 
+		struct Ship* junk = NewShip(junkType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
 
-		struct Ship* junk = NewShip(junkType, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
-
+		if (junkType == BP_COBRA) return; // will fly itself
+		
 		const signed char rollRand = (rand() % 128) | 0x6f;
 		junk->roll = rand() % 2 ? rollRand : -rollRand;
 
@@ -523,8 +644,8 @@ void flt_TrySpawnShips()
 		if (rand() % 2) junk->speed = rand() % 16 + 16; // in range 16-31
 		else junk->pitch = rand() % 2 ? 127 : -128; // max pitch, either up or down
 
-		if (junkType != BP_COBRA) junkAmt++; // the cobra will fly away by itself, but we
-											 // don't want canisters and rocks to build up
+		junkAmt++; // the cobra will fly away by itself, but we
+				   // don't want canisters and rocks to build up
 	}
 	else
 	{
@@ -536,7 +657,8 @@ void flt_TrySpawnShips()
 		// check for spawning a cop
 		if (rand() % 256 < player_outlaw)
 		{
-			struct Ship* cop = NewShip(BP_VIPER, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
+			struct Ship* cop = NewShip(BP_VIPER, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+			cop->aggro = 60;
 			cop->isHostile = true;
 			
 			return;
@@ -556,15 +678,31 @@ void flt_TrySpawnShips()
 		if ((rand() % 256) < 100)
 		{
 			extraSpawnDelay++;
-			
-			struct Ship* enemy = NewShip(BP_COBRA, spawnPos, Matrix(256, 0, 0, 0, 256, 0, 0, 0, 256));
+		
+			const unsigned char hunterType = rand() % 2 ? BP_COBRA : BP_PYTHON;
+
+			struct Ship* enemy = NewShip(hunterType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
 			enemy->isHostile = true;
 			enemy->aggro = 28;
+			enemy->hasEcm = rand() % 256 >= 200; // 22% chance
 			
 			return;
 		}
 
 		// if no bounty hunter, spawn pirates
+		for (unsigned char numPirates = rand() % 4 + 1; numPirates > 0; numPirates--)
+		{
+			extraSpawnDelay++;
+
+			const unsigned char pirateType = rand() % 2 ? BP_MAMBA : BP_SIDEWINDER;
+
+			struct Ship* enemy = NewShip(pirateType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+			enemy->isHostile = true;
+			enemy->aggro = rand() % 64;
+			enemy->hasEcm = rand() % 256 <= 10; // 4% chance
+
+			if (numShips == MAX_SHIPS) break; // maxed out, can't spawn any more pirates
+		}
 	}
 }
 
@@ -581,6 +719,12 @@ void flt_DoFrame(bool dashboardVisible)
 	if (drawCycle == 0) flt_TrySpawnShips(); // no need for "% 256" because drawCycle is a uint8
 	if (!stationSoi && drawCycle % 64 == 0) flt_TrySpawnStation();
 	if (drawCycle % 8 == 0) flt_UpdatePlayerAltitude();
+	else if (drawCycle % 8 == 4) flt_UpdateCabinTemperature();
+
+	// constant restoration
+	if (laserPulseCounter > 0) laserPulseCounter--;
+	if (player_laser_temp > 0) player_laser_temp--;
+	if (player_energy < 255) player_energy++;
 
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
@@ -655,6 +799,20 @@ void flt_DoFrame(bool dashboardVisible)
 	drawSpaceView();
 
 	if (dashboardVisible) drawDashboard();
+
+	// this flag is set when lasers are fired
+	if (drawLasers)
+	{
+		const unsigned char laserY = VIEW_VCENTER - LASER_LINE_SPREAD / 2 + rand() % LASER_LINE_SPREAD;
+		const unsigned char laserX = VIEW_HCENTER - LASER_LINE_SPREAD / 2 + rand() % LASER_LINE_SPREAD;
+
+		xor_Line(laserX, laserY, LASER_LINE_X_ONE + DASH_HOFFSET, DASH_VOFFSET);
+		xor_Line(laserX, laserY, LASER_LINE_X_TWO + DASH_HOFFSET, DASH_VOFFSET);
+		xor_Line(laserX, laserY, DASH_WIDTH - LASER_LINE_X_ONE + DASH_HOFFSET, DASH_VOFFSET);
+		xor_Line(laserX, laserY, DASH_WIDTH - LASER_LINE_X_TWO + DASH_HOFFSET, DASH_VOFFSET);
+
+		drawLasers = false; // unset the flag for next frame
+	}
 }
 
 void doFlight()
