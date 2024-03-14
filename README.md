@@ -24,10 +24,10 @@ Current features:
  - detailed planet rendering
  - upgrades
  - saving/loading
+ - spawning enemies
 
 Todo:
- - spawning enemies
  - combat
  - galactic hyperdrive
- - hyperdrive animation
+ - some animations
  - optimization
