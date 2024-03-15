@@ -123,6 +123,7 @@ void ShipAsExplosion(unsigned char shipIndex)
 	unsigned char particleCt = ships[shipIndex].explosionSize;
 	if (particleCt >= 128) particleCt ^= 0xff; // flip all bits, so we count up to 128 then back down
 	particleCt /= ships[shipIndex].explosionCount;
+	const unsigned char remCt = (ships[shipIndex].explosionSize ^ 0xff) % ships[shipIndex].explosionCount;
 	if (particleCt < 1) particleCt = 1;
 
 	// iterate through all vertices flagged for explosion particle drawing
@@ -131,7 +132,7 @@ void ShipAsExplosion(unsigned char shipIndex)
 		dbg_printf("drawing particles for vertex %u...\n", i);
 
 		// get the random seed *for this vertex*
-		srand(ships[shipIndex].explosionRand ^ i * 173);
+		srand(ships[shipIndex].explosionRand ^ i);
 
 		// where is this vertex on the screen?
 		const struct int_point_t vertexPos = ProjVertex(shipIndex, i, transformation);
@@ -139,7 +140,7 @@ void ShipAsExplosion(unsigned char shipIndex)
 		dbg_printf("vertex position: %d, %d\n", vertexPos.x, vertexPos.y);
 
 		// iterate through all the particles to draw for this vertex
-		for (unsigned char j = 0; j < particleCt; j++)
+		for (unsigned char j = i < remCt ? 0 : 1; j <= particleCt; j++)
 		{
 			const signed int x = vertexPos.x + (signed int)(rand() % 256 - 128) * drawnSize / 256;
 			const signed int y = vertexPos.y + (signed int)(rand() % 256 - 128) * drawnSize / 256;
@@ -150,7 +151,6 @@ void ShipAsExplosion(unsigned char shipIndex)
 		}
 	}
 
-	// recover the main program's seed
 	srand(savedSeed);
 }
 
@@ -281,6 +281,8 @@ void DrawShip(unsigned char shipIndex)
 		ships[shipIndex].laserFiring = false;
 		ships[shipIndex].toExplode = false;
 		ships[shipIndex].isExploding = true;
+
+		ships[shipIndex].speed = 0;
 		ships[shipIndex].acceleration = 0;
 		ships[shipIndex].pitch = 0;
 		ships[shipIndex].roll = 0;

@@ -534,11 +534,11 @@ void begin()
 unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
 {
 	numShips = 0;
-	NewShip(shipType, 
-			(struct vector_t){ 0, 0, TTL_SHIP_START_Z }, 
-			Matrix(256,0,0, 0,0,256, 0,256,0));
-	ships[0].pitch = 127;
-	ships[0].roll = 127;
+	struct Ship* titleShip = NewShip(shipType, 
+									 (struct vector_t){ 0, 0, TTL_SHIP_START_Z }, 
+									 Matrix(256,0,0, 0,0,256, 0,256,0));
+	titleShip->pitch = 127;
+	titleShip->roll = 127;
 
 	unsigned char returnVal = 0;
 
@@ -549,16 +549,16 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 		xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
 		xor_CenterText(query, queryLength, xor_clipY + xor_clipHeight - 3 * HEADER_Y - 8);
 	
-		if (ships[0].position.z > TTL_SHIP_END_Z) ships[0].position.z -= TTL_SHIP_ZOOM_RATE;
+		if (titleShip->position.z > TTL_SHIP_END_Z) titleShip->position.z -= TTL_SHIP_ZOOM_RATE;
 		MoveShip(0); // only rotation set, and no ai done, so it won't run away lol
 		DrawShip(0);
-		ships[0].orientation = orthonormalize(ships[0].orientation);
+		titleShip->orientation = orthonormalize(titleShip->orientation);
 
 		if (!acceptEnter)
 		{
-			xor_SetCursorPos(6, xor_textRows);
+			xor_SetCursorPos(5, xor_textRows);
 			xor_Print("(N)");
-			xor_SetCursorPos(xor_textCols - 11, xor_textRows);
+			xor_SetCursorPos(xor_textCols - 10, xor_textRows);
 			xor_Print("(Y)");
 		}
 
