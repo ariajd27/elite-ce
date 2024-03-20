@@ -280,7 +280,12 @@ void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned ch
 		lastY = newY;
 	}
 
+	// fill in gaps from XOR and incomplete loop
 	xor_Line(lastX, lastY, cX + r - 1, cY);
+	xor_Point(cX + trig_cos(24) * (signed int)r / 256,
+			  cY - trig_sin(24) * (signed int)r / 256);
+	xor_Point(cX + trig_cos(56) * (signed int)r / 256,
+			  cY - trig_sin(56) * (signed int)r / 256);
 }
 
 void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
@@ -319,8 +324,8 @@ void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, sig
 							 : stepTest < 60 ? 4
 							 : 2;
 
-	signed int lastX = cX + uX - 1;
-	signed int lastY = cY + uY - 1;
+	signed int lastX = cX + uX * 255 / 256;
+	signed int lastY = cY + uY * 255 / 256;
 
 	for (unsigned char i = 0; i < end; i += step)
 	{
@@ -333,7 +338,8 @@ void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, sig
 		lastY = newY;
 	}
 
-	xor_Line(lastX, lastY, cX + uX - 1, cY + uY - 1);
+	// fill gap in loop
+	xor_Line(lastX, lastY, cX + uX * 255 / 256, cY + uY * 255 / 256);
 }
 
 void xor_Char(unsigned int x, unsigned char y, char toPrint)
