@@ -184,7 +184,7 @@ struct intmatrix_t orthonormalize(struct intmatrix_t a)
 	u2 = normalize(u2);         // whatever. i'm doing it here, bc i can
 
 	// now to save a bunch of time
-	struct vector_t u3 = cross(u1, u2); // magnitude already equals 1 x 1 = 1... that was easy
+	struct vector_t u3 = cross(u2, u1); // magnitude already equals 1 x 1 = 1... that was easy
 
 	struct intmatrix_t output = Matrix(u3.x, u3.y, u3.z, u2.x, u2.y, u2.z, u1.x, u1.y, u1.z);
 

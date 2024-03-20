@@ -57,7 +57,11 @@ void RemoveShip(unsigned char shipIndex)
 	for (unsigned char i = shipIndex; i < numShips; i++)
 	{
 		ships[i] = ships[i + 1];
-		ships[i].target -= 1;
+
+		// flag missiles to not have a target if their target is destroyed,
+		// otherwise simply keep them on track for their targets
+		if (ships[i].target != shipIndex) ships[i].target -= 1;
+		else ships[i].target = MAX_SHIPS;
 	}
 	numShips--;
 }
@@ -129,23 +133,17 @@ void ShipAsExplosion(unsigned char shipIndex)
 	// iterate through all vertices flagged for explosion particle drawing
 	for (unsigned char i = 0; i < ships[shipIndex].explosionCount; i++)
 	{
-		dbg_printf("drawing particles for vertex %u...\n", i);
-
 		// get the random seed *for this vertex*
 		srand(ships[shipIndex].explosionRand ^ i);
 
 		// where is this vertex on the screen?
 		const struct int_point_t vertexPos = ProjVertex(shipIndex, i, transformation);
 
-		dbg_printf("vertex position: %d, %d\n", vertexPos.x, vertexPos.y);
-
 		// iterate through all the particles to draw for this vertex
 		for (unsigned char j = i < remCt ? 0 : 1; j <= particleCt; j++)
 		{
 			const signed int x = vertexPos.x + (signed int)(rand() % 256 - 128) * drawnSize / 256;
 			const signed int y = vertexPos.y + (signed int)(rand() % 256 - 128) * drawnSize / 256;
-
-			dbg_printf("particle at %d, %d\n", x, y);
 
 			xor_FillRectangle(x, y, EXPLOSION_PARTICLE_SIZE, EXPLOSION_PARTICLE_SIZE);
 		}
@@ -317,20 +315,29 @@ void DrawShip(unsigned char shipIndex)
 	else ShipAsWireframe(shipIndex);
 }
 
+void shp_FlipNose(unsigned char const shipIndex)
+{
+	for (unsigned char i = 6; i < 9; i++)
+	{
+		ships[shipIndex].orientation.a[i] = -ships[shipIndex].orientation.a[i];
+	}
+}
+
 void DoAI(unsigned char shipIndex)
 {
-	return; // JUST FOR TESTING TO DISABLE AI
+	// return; // JUST FOR TESTING TO DISABLE AI
 
-	switch (ships[shipIndex].shipType)
-	{
-		case BP_CANISTER:
-		case BP_ASTEROID:
-		case BP_CORIOLIS:
-		case PLANET:
-		case SUN: return;
-		default: break;
-	}
+	// is this even a real thing?
+	if (shipIndex >= numShips) return;
 
+	// some things don't have AI at all
+	if (ships[shipIndex].shipType >= BP_CORIOLIS
+			&& ships[shipIndex].shipType != BP_ESCAPEPOD
+			&& ships[shipIndex].shipType != BP_MISSILE) return;
+
+	dbg_printf("doing AI for ship %u, shipType %u...\n", shipIndex, ships[shipIndex].shipType);
+
+	// remove ships that fly super far away
 	if (ships[shipIndex].position.x > 224 * 256 
 			|| ships[shipIndex].position.y > 224 * 256 
 			|| ships[shipIndex].position.z > 224 * 256
@@ -343,49 +350,95 @@ void DoAI(unsigned char shipIndex)
 		return;
 	}
 
+	// recharge energy
+	if (ships[shipIndex].energy < bp_header_vectors[ships[shipIndex].shipType][BP_GENERAL][BP_MAX_ENERGY])
+	{
+		ships[shipIndex].energy++;
+	}
+
 	// which way are we trying to go?
 	struct vector_t goVector;
 	if (ships[shipIndex].shipType == BP_MISSILE)
 	{
+		// destroy missiles facing ECM or whose targets are dead
+		if (ecmTimer > 0 || ships[shipIndex].target == MAX_SHIPS)
+		{
+			ships[shipIndex].toExplode = true;
+			return;
+		}
+
 		// missiles head towards their target
 		goVector = sub(ships[ships[shipIndex].target].position, ships[shipIndex].position);
+
+		// missiles are drawn backwards, so invert the nose vector
+		shp_FlipNose(shipIndex);
 	}
 	else if (ships[shipIndex].isHostile)
 	{
 		// most things head away from the player (but can switch to towards)
 		goVector = ships[shipIndex].position;
 
-		// if not too close and feeling aggressive, we go towards the player. otherwise away.
-		if (((ships[shipIndex].position.x | ships[shipIndex].position.y) & 0xfe00) == 0)
+		// if we are not a cop, we shouldn't attack in the safe zone
+		if (stationSoi || ships[shipIndex].shipType == BP_VIPER)
 		{
-			if (rand() % 128 < ships[shipIndex].aggro) goVector = mul(goVector, -1);
+			// this is the easiest way to pacify a ship, but it might need changed later
+			ships[shipIndex].isHostile = false;
+		}
+		else
+		{
+			// if not too close and feeling aggressive, we go towards the player. otherwise away.
+			const unsigned int distance = intabs(ships[shipIndex].position.x)
+							   			| intabs(ships[shipIndex].position.y)
+							   			| intabs(ships[shipIndex].position.z);
+			if ((distance >> 9) != 0 && rand() % 128 < ships[shipIndex].aggro)
+			{
+				dbg_printf("aggressive mode!\n");
+				goVector = mul(goVector, -1);
+			}
 		}
 	}
 	else
 	{
 		// escape pods flee towards the planet
-		unsigned char i;
-		for (i = 0; ships[i].shipType != PLANET; i++);
-		goVector = sub(ships[i].position, ships[shipIndex].position);
+		unsigned char planetIndex;
+		for (planetIndex = 0; ships[planetIndex].shipType != PLANET; planetIndex++);
+		goVector = sub(ships[planetIndex].position, ships[shipIndex].position);
 	}
 
-	const signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
+	// normalizing means that goAlign will have a consistent meaning
+	goVector = normalize(goVector);
+	// missiles are backwards, but their goAligns shouldn't be
+	const signed int goAlign = (ships[shipIndex].shipType == BP_MISSILE ? 1 : -1) 
+							 * dot(goVector, getRow(ships[shipIndex].orientation, 2));
+
+	// TODO consider firing weapons, using ECM
+
+	// steering and thrust!
+	dbg_printf("current position: (%d, %d, %d)\n", ships[shipIndex].position.x, ships[shipIndex].position.y, ships[shipIndex].position.z);
+	dbg_printf("target vector: (%d, %d, %d)\n", goVector.x, goVector.y, goVector.z);
+	dbg_printf("current orientation: (%d,%d,%d, %d,%d,%d, %d,%d,%d)\n", ships[shipIndex].orientation.a[0], 
+ships[shipIndex].orientation.a[1], ships[shipIndex].orientation.a[2], ships[shipIndex].orientation.a[3], 
+ships[shipIndex].orientation.a[4], ships[shipIndex].orientation.a[5], ships[shipIndex].orientation.a[6], 
+ships[shipIndex].orientation.a[7], ships[shipIndex].orientation.a[8]);
+	dbg_printf("current speed: %u\n", ships[shipIndex].speed);
+	dbg_printf("current nose alignment: %d\n", goAlign);
 
 	// pitch is simple
-	ships[shipIndex].pitch = -3 * dot(goVector, getRow(ships[shipIndex].orientation, 1));
+	const signed int roofAlign = dot(goVector, getRow(ships[shipIndex].orientation, 1));
+	dbg_printf("current roof alignment: %d\n", roofAlign);
+	ships[shipIndex].pitch = roofAlign > 0 ? 3 : -3;
+	dbg_printf("pitch set: %d\n", ships[shipIndex].pitch);
 
 	// roll is not... skip roll processing if already in a roll
-	if ((ships[shipIndex].roll < 0 ? -1 * ships[shipIndex].roll : ships[shipIndex].roll) < 16)
+	if (intabs(ships[shipIndex].roll) < 16)
 	{
-		// roll clockwise if dot product sign is the same as pitch counter sign, else counter-clockwise
-		if ((dot(goVector, getRow(ships[shipIndex].orientation, 0)) < 0) == (ships[shipIndex].pitch < 0))
-		{
-			ships[shipIndex].roll = 5;
-		}
-		else
-		{
-			ships[shipIndex].roll = -5;
-		}
+		const signed int sideAlign = dot(goVector, getRow(ships[shipIndex].orientation, 0)); 
+		dbg_printf("current side alignment: %d\n", sideAlign);
+
+		// roll so that pitch will be towards the target
+		ships[shipIndex].roll = (sideAlign > 0) == (ships[shipIndex].pitch > 0) ? 5 : -5;
+
+		dbg_printf("roll set: %d\n", ships[shipIndex].roll);
 	}
 
 	if (goAlign >= 22 * 256) // speed up if charging towards target
@@ -393,20 +446,24 @@ void DoAI(unsigned char shipIndex)
 		ships[shipIndex].acceleration = 3;
 	}
 
+	// flip the nose vector back if inverted earlier
+	if (ships[shipIndex].shipType == BP_MISSILE) shp_FlipNose(shipIndex);
+
 	// don't slow down if we still need to do lots of turning
 	else if (goAlign < 18 * 256 && goAlign > -18 * 256) ships[shipIndex].acceleration = 0;
 
 	// if no return yet, slow down, missiles faster than other things
 	else if (ships[shipIndex].shipType == BP_MISSILE) ships[shipIndex].acceleration = -2;
 	else ships[shipIndex].acceleration = -1;
+
+	dbg_printf("acceleration set: %d\n", ships[shipIndex].acceleration);
 }
 
 void RotateShip(signed int* x, signed int* y, signed char amount)
 {
 	signed int oldX = *x;
 
-	// 1 - 1/512 is cosine of some tiny angle
-	// of which 1 / 16 is sine (3.6 degrees)
+	// 1 - 1/512 is the cosine of 3.6 degrees, and 1 / 16 is the sine
 	if (amount > 0)
 	{
 		*x = *x * (1 - 1 / 512) + *y / 16;
@@ -440,9 +497,6 @@ void MoveShip(unsigned char shipIndex)
 	// apply roll
 	if (ships[shipIndex].roll != 0)
 	{
-		if (ships[shipIndex].roll > 0 && ships[shipIndex].roll < 127) ships[shipIndex].roll--;
-		else if (ships[shipIndex].roll < 0 && ships[shipIndex].roll > -128) ships[shipIndex].roll++;
-
 		RotateShip(&ships[shipIndex].orientation.a[3], 
 				&ships[shipIndex].orientation.a[0], 
 				ships[shipIndex].roll);
@@ -452,14 +506,15 @@ void MoveShip(unsigned char shipIndex)
 		RotateShip(&ships[shipIndex].orientation.a[5], 
 				&ships[shipIndex].orientation.a[2], 
 				ships[shipIndex].roll);
+		
+		if (ships[shipIndex].roll > 0 && ships[shipIndex].roll < 127) ships[shipIndex].roll--;
+		else if (ships[shipIndex].roll < 0 && ships[shipIndex].roll > -128) ships[shipIndex].roll++;
+
 	}
 
 	// apply pitch
 	if (ships[shipIndex].pitch != 0)
 	{
-		if (ships[shipIndex].pitch > 0 && ships[shipIndex].pitch < 127) ships[shipIndex].pitch--;
-		else if (ships[shipIndex].pitch < 0 && ships[shipIndex].pitch > -128) ships[shipIndex].pitch++;
-
 		RotateShip(&ships[shipIndex].orientation.a[3], 
 				&ships[shipIndex].orientation.a[6], 
 				ships[shipIndex].pitch);
@@ -469,6 +524,9 @@ void MoveShip(unsigned char shipIndex)
 		RotateShip(&ships[shipIndex].orientation.a[5], 
 				&ships[shipIndex].orientation.a[8], 
 				ships[shipIndex].pitch);
+
+		if (ships[shipIndex].pitch > 0 && ships[shipIndex].pitch < 127) ships[shipIndex].pitch--;
+		else if (ships[shipIndex].pitch < 0 && ships[shipIndex].pitch > -128) ships[shipIndex].pitch++;
 	}
 }
 

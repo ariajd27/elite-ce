@@ -44,6 +44,7 @@ enum player_condition_t player_condition;
 
 unsigned char junkAmt;
 unsigned char extraSpawnDelay;
+unsigned char ecmTimer;
 
 bool stationSoi;
 
@@ -184,6 +185,9 @@ void drawDashboard()
 		// assume stars, planets too far away
 		if (ships[i].shipType > BP_ESCAPEPOD) continue;
 
+		// don't draw dead ships
+		if (ships[i].isExploding) continue;
+
 		// check to make sure ship in range
 		if (ships[i].position.x < -63 * 256) continue;
 		if (ships[i].position.x > 63 * 256) continue;
@@ -314,7 +318,7 @@ void flt_TryInSystemJump()
 	// check for other ships
 	for (unsigned char i = 0; i < numShips; i++)
 	{
-		if (ships[i].shipType < BP_ASTEROID) return; // interference!
+		if (ships[i].shipType < BP_ASTEROID && !ships[i].isExploding) return; // interference!
 	}
 
 	// find the sun and planet
@@ -379,7 +383,7 @@ void flt_TryLasers()
 		if (ships[i].isExploding) continue; // it's already dead, man!
 
 		// is it even close enough to hit?
-		if ((ships[i].position.x | ships[i].position.y) > LASER_MAX_RANGE) continue;
+		// if ((ships[i].position.x | ships[i].position.y) > LASER_MAX_RANGE) continue;
 
 		// what is the ships's targetable area?
 		const unsigned char* bpGeneral = bp_header_vectors[ships[i].shipType][BP_GENERAL];
@@ -401,7 +405,43 @@ void flt_TryLasers()
 
 void flt_TryMissile()
 {
-	// TODO
+	if (!player_missiles) return; // no missiles to shoot
+	if (numShips + 1 >= MAX_SHIPS) return; // no room to spawn a missile
+
+	// who are we aiming at?
+	unsigned char target;
+	for (target = 0; true; target++)
+	{
+		if (target >= numShips) return; // failed to find a target
+
+		// is this a valid target?
+		if (ships[target].position.z <= 0) continue;
+		if (ships[target].shipType > PLANET) continue;
+		if (ships[target].isExploding) continue;
+
+		// is it close enough to see?
+		const unsigned int z = intabs(ships[target].position.z);
+		if (z > MAX_MISSILE_LOCK_RANGE) continue;
+
+		// is it within a targeting arc?
+		if (intabs(ships[target].position.x) / 8 > z) continue;
+		if (intabs(ships[target].position.y) / 8 > z) continue;
+
+		// we've found our target!
+		break;
+	}
+	
+	struct Ship* missile = NewShip(BP_MISSILE,
+								   (struct vector_t){ 0, MISSILE_LAUNCH_Y, MISSILE_LAUNCH_Z },
+								   Matrix(256,0,0, 0,256,0, 0,0,-256));
+	missile->speed = MISSILE_LAUNCH_SPEED;
+	missile->target = target;
+	missile->aggro = 64;
+
+	player_missiles--;
+
+	// make the target mad on launch -- they see the missile lock
+	if (ships[target].shipType != BP_ASTEROID) ships[target].isHostile = true;
 }
 
 bool doFlightInput()
@@ -685,7 +725,8 @@ void flt_TrySpawnShips()
 			enemy->isHostile = true;
 			enemy->aggro = 28;
 			enemy->hasEcm = rand() % 256 >= 200; // 22% chance
-			
+			enemy->speed = 12;
+
 			return;
 		}
 
@@ -700,6 +741,7 @@ void flt_TrySpawnShips()
 			enemy->isHostile = true;
 			enemy->aggro = rand() % 64;
 			enemy->hasEcm = rand() % 256 <= 10; // 4% chance
+			enemy->speed = 12;
 
 			if (numShips == MAX_SHIPS) break; // maxed out, can't spawn any more pirates
 		}
@@ -725,6 +767,7 @@ void flt_DoFrame(bool dashboardVisible)
 	if (laserPulseCounter > 0) laserPulseCounter--;
 	if (player_laser_temp > 0) player_laser_temp--;
 	if (player_energy < 255) player_energy++;
+	if (ecmTimer > 0) ecmTimer--;
 
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);

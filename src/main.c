@@ -162,7 +162,7 @@ void drawMenu(bool resetCrs)
 					currentMenu == THIS_DATA ? &currentSeed : &selectedSeed;
 
 				xor_CenterTextOffset("DATA ON", 7, HEADER_Y, 1 + strlen(relevantData->name));
-				xor_CenterTextOffset(relevantData->name, strlen(relevantData->name), 8, -8);
+				xor_CenterTextOffset(relevantData->name, strlen(relevantData->name), HEADER_Y, -8);
 
 				xor_SetCursorPos(0, 6);
 				xor_lineSpacing = true;

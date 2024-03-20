@@ -19,6 +19,8 @@ extern enum player_condition_t {
 
 extern bool stationSoi;
 
+extern unsigned char ecmTimer;
+
 void flt_Init();
 
 void resetPlayerCondition();
