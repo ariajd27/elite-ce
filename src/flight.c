@@ -48,6 +48,13 @@ unsigned char ecmTimer;
 
 bool stationSoi;
 
+char flightMsg[FLTMSG_MAX_LENGTH];
+unsigned char flightMsgLength;
+unsigned char flightMsgTimer;
+
+unsigned char starJumpHeld;
+unsigned char galaxyJumpHeld;
+
 void flt_Init()
 {
 	player_speed = 0;
@@ -68,6 +75,7 @@ void flt_Init()
 	laserPulseCounter = 0;
 
 	viewDirMode = FRONT;
+	flightMsgTimer = 0;
 	player_condition = DOCKED;
 
 	stationSoi = true;
@@ -151,6 +159,16 @@ void resetPlayerCondition()
 	player_condition = GREEN;
 }
 
+void flt_SetMsg(char message[], unsigned char time)
+{
+	for (flightMsgLength = 0; message[flightMsgLength] != '\0'; flightMsgLength++)
+	{
+		flightMsg[flightMsgLength] = message[flightMsgLength];
+	}
+
+	flightMsgTimer = time;
+}
+
 void drawSpaceView()
 {
 	if (viewDirMode == FRONT) 
@@ -170,6 +188,11 @@ void drawSpaceView()
 
 	stardust_Move(viewDirMode, player_speed, player_pitch, player_roll);
 	stardust_Draw(); // order is not really important here
+
+	if (flightMsgTimer == 0) return; // no message to draw
+	
+	xor_CenterText(flightMsg, flightMsgLength, FLTMSG_VOFFSET);
+	flightMsgTimer--;
 }
 
 void drawDashboard()
@@ -295,18 +318,75 @@ void drawDashboard()
 	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 42, 1 + player_altitude / 8, 3);	
 }
 
-void flt_TryHyperdrive()
+bool flt_CanJump()
 {
-	if (player_speed != PLAYER_MAX_SPEED) return;
-	if (currentSeed.a == selectedSeed.a) return;
-	if (currentSeed.b == selectedSeed.b) return;
-	if (currentSeed.c == selectedSeed.c) return;
+	// check for other ships
+	for (unsigned char i = 0; i < numShips; i++)
+	{
+		if (ships[i].shipType != BP_CORIOLIS && ships[i].shipType < BP_ASTEROID && !ships[i].isExploding)
+		{
+			flt_SetMsg("Interference!", FLTMSG_MED_TIME);
+			return false;
+		}
+	}
 
+	// find the sun and planet
+	unsigned char planetIndex = 0;
+	while (ships[planetIndex].shipType != PLANET) planetIndex++;
+
+	if (!stationSoi)
+	{
+		unsigned char sunIndex = 0;
+		while (ships[sunIndex].shipType != SUN) sunIndex++;
+	
+		// if both sun and planet are too close, the jump is impossible
+		if (ships[sunIndex].position.z < 0x020000 && ships[planetIndex].position.z < 0x020000)
+		{
+			flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
+			return false;
+		}
+	}
+	else if (ships[planetIndex].position.z > 0
+		  && ships[planetIndex].position.x < ships[planetIndex].position.z 
+		  && ships[planetIndex].position.y < ships[planetIndex].position.z)
+	{
+		flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
+		return false;
+	}
+
+	if (player_speed != PLAYER_MAX_SPEED)
+	{
+		flt_SetMsg("Throttle up!", FLTMSG_MED_TIME);
+		return false;
+	}
+
+	return true;
+}
+
+bool flt_CanHyperdrive()
+{
+	if (prgm && !player_upgrades.galacticHyperdrive) return false; // you gotta have the drive to use it!
+
+	if (currentSeed.a == selectedSeed.a 
+	 || currentSeed.b == selectedSeed.b 
+	 || currentSeed.c == selectedSeed.c)
+	{
+		flt_SetMsg("No destination set!", FLTMSG_MED_TIME);
+		return false;
+	}
+
+	return flt_CanJump();
+}
+
+void flt_DoHyperdrive(bool intergalactic)
+{
 	stationSoi = false;
 	drawCycle = 0;
 	junkAmt = 0;
 	extraSpawnDelay = 0;
-	gen_ChangeSystem();
+
+	if (intergalactic) gen_ChangeGalaxy();
+	else gen_ChangeSystem();
 
 	flt_DoHyperspaceAnimation();
 }
@@ -314,22 +394,15 @@ void flt_TryHyperdrive()
 void flt_TryInSystemJump()
 {
 	if (stationSoi) return; // definitely too close
-
-	// check for other ships
-	for (unsigned char i = 0; i < numShips; i++)
-	{
-		if (ships[i].shipType < BP_ASTEROID && !ships[i].isExploding) return; // interference!
-	}
-
-	// find the sun and planet
+	
+	if (!flt_CanJump()) return;
+	
+	// find the sun and planet to do the jump
 	unsigned char sunIndex = 0;
 	while (ships[sunIndex].shipType != SUN) sunIndex++;
 	unsigned char planetIndex = 0;
 	while (ships[planetIndex].shipType != PLANET) planetIndex++;
 
-	// if both sun and planet are too close, the jump is impossible
-	if (ships[sunIndex].position.z < 0x020000 && ships[planetIndex].position.z < 0x020000) return;
-	
 	// do the jump
 	ships[planetIndex].position.z -= 0x010000;
 	ships[sunIndex].position.z -= 0x010000;
@@ -494,7 +567,12 @@ bool doFlightInput()
 	}
 
 	// engine controls
-	if (clear && prevClear == 0) flt_TryHyperdrive();
+	if ((prgm || clear) && flt_CanHyperdrive())
+	{
+		if (prevClear >= STAR_JUMP_HOLD_TIME) flt_DoHyperdrive(false);
+		else if (prevPrgm >= GALAXY_JUMP_HOLD_TIME) flt_DoHyperdrive(true);
+		else flt_SetMsg("Preparing jump...", 2);
+	}
 	else if (vars && prevVars == 0) flt_TryInSystemJump();
 
 	// weapons
@@ -772,9 +850,10 @@ void flt_DoFrame(bool dashboardVisible)
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
 
-	// do ai -- two ships per cycle
+	// do ai -- three ships per cycle
 	DoAI(drawCycle % MAX_SHIPS);
-	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
+	DoAI((drawCycle + MAX_SHIPS / 3) % MAX_SHIPS);
+	DoAI((drawCycle + 2 * MAX_SHIPS / 3) % MAX_SHIPS);
 
 	for (unsigned char i = 0; i < numShips; i++)
 	{

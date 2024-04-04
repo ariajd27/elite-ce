@@ -12,6 +12,7 @@ Current features:
  - other ships
  - many player stats
  - inter-system jumps
+ - inter-galactic jumps
  - economy simulation
  - system data, maps
  - buying/selling
@@ -28,6 +29,5 @@ Current features:
 
 Todo:
  - combat
- - galactic hyperdrive
  - some animations
  - optimization

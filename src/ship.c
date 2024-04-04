@@ -37,7 +37,7 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 
 	ships[numShips].explosionSize = EXPLOSION_START_SIZE;
 	ships[numShips].explosionCount = bp_header_vectors[shipType][BP_GENERAL][BP_EXPLCT_IND];
-	// ships[numShips].explosionRand not initialized
+	// ships[numShips].explosionRand isn't initialized until the explosion begins
 
 	ships[numShips].speed = 0;
 	ships[numShips].acceleration = 0;
@@ -254,19 +254,19 @@ void ShipAsBody(unsigned char shipIndex)
 	xor_Circle(center.x, center.y, radius);
 
 	// i removed the equator/meridian planets because they look like goddamn beach balls
-	if (gen_PlanetHasCrater())
-	{
-		if (ships[shipIndex].orientation.a[5] < 0) return; // only draw the crater on one side of the planet
+	if (!gen_PlanetHasCrater()) return;
+
+	// only the draw the crater if it's facing the camera
+	if (ships[shipIndex].orientation.a[5] < 0) return;
 	
-		// draw the crater!!!!!
-		xor_Ellipse(center.x + 83 * ships[shipIndex].orientation.a[3] / (ships[shipIndex].position.z >> 8),
-					center.y + 83 * ships[shipIndex].orientation.a[4] / (ships[shipIndex].position.z >> 8),
-					96 * ships[shipIndex].orientation.a[6] / (ships[shipIndex].position.z / 128),
-					96 * ships[shipIndex].orientation.a[7] / (ships[shipIndex].position.z / 128),
-					96 * ships[shipIndex].orientation.a[0] / (ships[shipIndex].position.z / 128),
-					96 * ships[shipIndex].orientation.a[1] / (ships[shipIndex].position.z / 128),
-					64);
-	}
+	// draw the crater!!!!!
+	xor_Ellipse(center.x + 83 * ships[shipIndex].orientation.a[3] / (ships[shipIndex].position.z >> 8),
+				center.y + 83 * ships[shipIndex].orientation.a[4] / (ships[shipIndex].position.z >> 8),
+				96 * ships[shipIndex].orientation.a[6] / (ships[shipIndex].position.z / 128),
+				96 * ships[shipIndex].orientation.a[7] / (ships[shipIndex].position.z / 128),
+				96 * ships[shipIndex].orientation.a[0] / (ships[shipIndex].position.z / 128),
+				96 * ships[shipIndex].orientation.a[1] / (ships[shipIndex].position.z / 128),
+				64);
 }
 
 void DrawShip(unsigned char shipIndex)
@@ -368,7 +368,8 @@ void DoAI(unsigned char shipIndex)
 		}
 
 		// missiles head towards their target
-		goVector = sub(ships[ships[shipIndex].target].position, ships[shipIndex].position);
+		if (ships[shipIndex].isHostile) goVector = mul(ships[shipIndex].position, -1);
+		else goVector = sub(ships[ships[shipIndex].target].position, ships[shipIndex].position);
 
 		// missiles are drawn backwards, so invert the nose vector
 		shp_FlipNose(shipIndex);
@@ -429,9 +430,17 @@ ships[shipIndex].orientation.a[7], ships[shipIndex].orientation.a[8]);
 	ships[shipIndex].pitch = roofAlign > 0 ? 3 : -3;
 	dbg_printf("pitch set: %d\n", ships[shipIndex].pitch);
 
-	// roll is not... skip roll processing if already in a roll
+	// roll is not...
+	// first, non-missiles might make wacky swerves for variety
+	if (ships[shipIndex].shipType != BP_MISSILE && rand() % 128 < 8)
+	{
+		ships[shipIndex].roll = rand() % 2 ? 20 : -20;
+	}
+
+	// then skip normal roll processing if already in a roll
 	if (intabs(ships[shipIndex].roll) < 16)
 	{
+		// here is normal roll processing
 		const signed int sideAlign = dot(goVector, getRow(ships[shipIndex].orientation, 0)); 
 		dbg_printf("current side alignment: %d\n", sideAlign);
 

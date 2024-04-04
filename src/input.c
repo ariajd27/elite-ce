@@ -7,7 +7,8 @@ bool yequ,
 	 left, 
 	 right, 
 	 enter, 
-	 math, 
+	 math,
+	 prgm,
 	 vars, 
 	 clear,
 	 mode,
@@ -22,6 +23,7 @@ unsigned char prevYequ,
 			  prevRight, 
 			  prevEnter, 
 			  prevMath, 
+			  prevPrgm,
 			  prevVars, 
 			  prevClear,
 			  prevMode,
@@ -43,6 +45,7 @@ void updateKeys()
 	right = kb_IsDown(kb_KeyRight);
 	enter = kb_IsDown(kb_KeyEnter);
 	math = kb_IsDown(kb_KeyMath);
+	prgm = kb_IsDown(kb_KeyPrgm);
 	vars = kb_IsDown(kb_KeyVars);
 	clear = kb_IsDown(kb_KeyClear);
 	mode = kb_IsDown(kb_KeyMode);
@@ -61,6 +64,7 @@ void updatePrevKeys()
 	prevRight = right ? prevRight + 1 : 0;
 	prevEnter = enter ? prevEnter + 1 : 0;
 	prevMath = math ? prevMath + 1 : 0;
+	prevPrgm = prgm ? prevPrgm + 1 : 0;
 	prevVars = vars ? prevVars + 1 : 0;
 	prevClear = clear ? prevClear + 1 : 0;
 	prevMode = mode ? prevMode + 1 : 0;

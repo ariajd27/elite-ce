@@ -58,5 +58,6 @@ void gen_ResetCursorPosition(bool local);
 void gen_RedrawCursorPosition(signed int prevCrsX, signed int prevCrsY);
 
 bool gen_ChangeSystem();
+void gen_ChangeGalaxy();
 
 #endif

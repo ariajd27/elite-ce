@@ -507,3 +507,24 @@ bool gen_PlanetHasCrater()
 {
 	return (thisSystemData.techLevel & 0x02) != 0;
 }
+
+void gen_RotateBytes(unsigned char *start)
+{
+	unsigned char savedBit = (*start & 0x80) >> 7;
+	*start = (*start << 1) | savedBit;
+	savedBit = (*(start + 1) & 0x80) >> 7;
+	*(start + 1) = (*(start + 1) << 1) | savedBit;
+}
+
+void gen_ChangeGalaxy() // also changes systems!
+{
+	gen_RotateBytes(&originSeed.a);
+	gen_RotateBytes(&originSeed.b);
+	gen_RotateBytes(&originSeed.c);
+	gen_currentGalaxy++;
+
+	selectedSeed = originSeed;
+	gen_SetSystemData(&selectedSystemData, &selectedSeed);
+	gen_distanceToTarget = 70; // an intergalactic jump takes a full fuel tank
+	gen_ChangeSystem();
+}
