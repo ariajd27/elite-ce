@@ -564,9 +564,9 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 		gfx_BlitBuffer();
 
-		kb_Scan();
+		updateKeys();
 
-		if (kb_IsDown(kb_KeyClear))
+		if (clear && prevClear == 0)
 		{
 			numShips = 0;
 			return 2;
@@ -574,18 +574,20 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 		if (!acceptEnter)
 		{
-			if (kb_IsDown(kb_KeyYequ))
+			if (yequ && prevYequ == 0)
 			{
 				returnVal = 0;
 				break;
 			}
-			if (kb_IsDown(kb_KeyGraph))
+			if (graph && prevGraph == 0)
 			{
 				returnVal = 1;
 				break;
 			}
 		}
-		else if (kb_IsDown(kb_KeyEnter)) break;
+		else if (enter && prevEnter == 0) break;
+
+		updatePrevKeys();
 	}
 
 	numShips = 0;
@@ -657,7 +659,7 @@ void saveGame()
 	ti_Close(saveHandle);
 }
 
-void nameCmdr()
+bool nameCmdr() // returns TRUE if abort requested by user
 {
 	gfx_FillScreen(COLOR_BLACK);
 	xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
@@ -671,7 +673,7 @@ void nameCmdr()
 	{
 		gfx_BlitBuffer();
 
-		kb_Scan();
+		updateKeys();
 
 		char typedChar = getChar();
 		if (typedChar != '\0' && cmdr_name_length < CMDR_NAME_MAX_LENGTH)
@@ -683,20 +685,31 @@ void nameCmdr()
 			cmdr_name[cmdr_name_length] = '\0'; // so that the reset writing call can get the length right
 		}
 
-		if (kb_IsDown(kb_KeyClear) && cmdr_name_length > 0)
+		if (clear && prevClear == 0)
 		{
-			xor_SetCursorPos(resetX, xor_cursorY);
-			xor_Print(cmdr_name); // reset writing call mentioned above, erases previous name with XOR
+			if (cmdr_name_length > 0)
+			{
+				xor_SetCursorPos(resetX, xor_cursorY);
+				xor_Print(cmdr_name); // reset writing call mentioned above, erases previous name with XOR
 			
-			xor_SetCursorPos(resetX, xor_cursorY); // ready to write the new name
-			cmdr_name_length = 0;
+				xor_SetCursorPos(resetX, xor_cursorY); // ready to write the new name
+				cmdr_name_length = 0;
+			}
+			else return true;
 		}
+
+		updatePrevKeys();
 	}
 	while (!kb_IsDown(kb_KeyEnter));
+
+	return false;
 }
 
 bool run()
 {
+	// this will stop the program from immediately exiting if clear is depressed
+	prevClear = 1;
+
 	// load the gamestate for the Jameson default save
 	// this will be overwritten if a save is detected and selected
 	begin();
@@ -721,9 +734,10 @@ bool run()
 
 		// in either possible case where we don't load a save, we should let the
 		// player name the commander!
-		else nameCmdr();
+		else if (nameCmdr()) return true;
 	}
-	else nameCmdr();
+	else if (nameCmdr()) return true; // return true will kick us back to the first menu
+									  // because it requests a relaunch (same as on death)
 
 	// this is the title screen that is always shown
 	if (titleScreen(BP_MAMBA, "Press ENTER, CMDR.", 18, true) == 2) return false;
