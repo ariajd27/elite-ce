@@ -1,6 +1,6 @@
-### Controls
+## Controls
 
-## Menu navigation
+### Menu navigation
 
 Left (out): y=
 
@@ -14,7 +14,7 @@ The exact behavior of these buttons depends on the state of the ship. There is a
 
 The flight simulation is paused while in a menu.
 
-## Flight
+### Flight
 
 Accelerate: 2nd
 
