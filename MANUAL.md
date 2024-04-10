@@ -30,4 +30,4 @@ Intergalactic jump: prgm
 
 Laser fire: mode
 
-Missile fire: X,T,\theta,n
+Missile fire: graphVar

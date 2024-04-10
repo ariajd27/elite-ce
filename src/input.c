@@ -1,35 +1,8 @@
 #include <keypadc.h>
 
-bool yequ, 
-	 graph, 
-	 up, 
-	 down, 
-	 left, 
-	 right, 
-	 enter, 
-	 math,
-	 prgm,
-	 vars, 
-	 clear,
-	 mode,
-	 del,
-	 graphVar,
-	 stat;
-unsigned char prevYequ, 
-			  prevGraph, 
-			  prevUp, 
-			  prevDown, 
-			  prevLeft, 
-			  prevRight, 
-			  prevEnter, 
-			  prevMath, 
-			  prevPrgm,
-			  prevVars, 
-			  prevClear,
-			  prevMode,
-			  prevDel,
-			  prevGraphVar,
-			  prevStat;
+unsigned char yequ, graph, up, down, left, right, 
+			  enter, math, prgm, vars, clear, mode, 
+			  del, graphVar, stat, apps, alpha, second;
 
 char prevData[8];
 
@@ -37,40 +10,24 @@ void updateKeys()
 {
 	kb_Scan();
 
-	yequ = kb_IsDown(kb_KeyYequ);
-	graph = kb_IsDown(kb_KeyGraph);
-	up = kb_IsDown(kb_KeyUp);
-	down = kb_IsDown(kb_KeyDown);
-	left = kb_IsDown(kb_KeyLeft);
-	right = kb_IsDown(kb_KeyRight);
-	enter = kb_IsDown(kb_KeyEnter);
-	math = kb_IsDown(kb_KeyMath);
-	prgm = kb_IsDown(kb_KeyPrgm);
-	vars = kb_IsDown(kb_KeyVars);
-	clear = kb_IsDown(kb_KeyClear);
-	mode = kb_IsDown(kb_KeyMode);
-	del = kb_IsDown(kb_KeyDel);
-	graphVar = kb_IsDown(kb_KeyGraphVar);
-	stat = kb_IsDown(kb_KeyStat);
-}
-
-void updatePrevKeys()
-{
-	prevYequ = yequ ? prevYequ + 1 : 0;
-	prevGraph = graph ? prevGraph + 1 : 0;
-	prevUp = up ? prevUp + 1 : 0;
-	prevDown = down ? prevDown + 1 : 0;
-	prevLeft = left ? prevLeft + 1 : 0;
-	prevRight = right ? prevRight + 1 : 0;
-	prevEnter = enter ? prevEnter + 1 : 0;
-	prevMath = math ? prevMath + 1 : 0;
-	prevPrgm = prgm ? prevPrgm + 1 : 0;
-	prevVars = vars ? prevVars + 1 : 0;
-	prevClear = clear ? prevClear + 1 : 0;
-	prevMode = mode ? prevMode + 1 : 0;
-	prevDel = del ? prevDel + 1 : 0;
-	prevGraphVar = graphVar ? graphVar + 1 : 0;
-	prevStat = stat ? prevStat + 1 : 0;
+	yequ = kb_IsDown(kb_KeyYequ) ? yequ + 1 : 0;
+	graph = kb_IsDown(kb_KeyGraph) ? graph + 1 : 0;
+	up = kb_IsDown(kb_KeyUp) ? up + 1 : 0;
+	down = kb_IsDown(kb_KeyDown) ? down + 1 : 0;
+	left = kb_IsDown(kb_KeyLeft) ? left + 1 : 0;
+	right = kb_IsDown(kb_KeyRight) ? right + 1 : 0;
+	enter = kb_IsDown(kb_KeyEnter) ? enter + 1 : 0;
+	math = kb_IsDown(kb_KeyMath) ? math + 1 : 0;
+	prgm = kb_IsDown(kb_KeyPrgm) ? prgm + 1 : 0;
+	vars = kb_IsDown(kb_KeyVars) ? vars + 1 : 0;
+	clear = kb_IsDown(kb_KeyClear) ? clear + 1 : 0;
+	mode = kb_IsDown(kb_KeyMode) ? mode + 1 : 0;
+	del = kb_IsDown(kb_KeyDel) ? del + 1 : 0;
+	graphVar = kb_IsDown(kb_KeyGraphVar) ? graphVar + 1 : 0;
+	stat = kb_IsDown(kb_KeyStat) ? stat + 1 : 0;
+	apps = kb_IsDown(kb_KeyApps) ? apps + 1 : 0;
+	alpha = kb_IsDown(kb_KeyAlpha) ? alpha + 1 : 0;
+	second = kb_IsDown(kb_Key2nd) ? second + 1 : 0;
 }
 
 char getChar()

@@ -335,8 +335,6 @@ void DoAI(unsigned char shipIndex)
 			&& ships[shipIndex].shipType != BP_ESCAPEPOD
 			&& ships[shipIndex].shipType != BP_MISSILE) return;
 
-	dbg_printf("doing AI for ship %u, shipType %u...\n", shipIndex, ships[shipIndex].shipType);
-
 	// remove ships that fly super far away
 	if (ships[shipIndex].position.x > 224 * 256 
 			|| ships[shipIndex].position.y > 224 * 256 
@@ -350,6 +348,8 @@ void DoAI(unsigned char shipIndex)
 		return;
 	}
 
+	dbg_printf("doing AI for ship %u, shipType %u...\n", shipIndex, ships[shipIndex].shipType);
+
 	// recharge energy
 	if (ships[shipIndex].energy < bp_header_vectors[ships[shipIndex].shipType][BP_GENERAL][BP_MAX_ENERGY])
 	{
@@ -360,6 +360,33 @@ void DoAI(unsigned char shipIndex)
 	struct vector_t goVector;
 	if (ships[shipIndex].shipType == BP_MISSILE)
 	{
+		// check if the missile has hit its target
+		const unsigned int range = ships[shipIndex].isHostile ? magnitude(ships[shipIndex].position) 
+			: magnitude(sub(ships[ships[shipIndex].target].position, ships[shipIndex].position));
+		if (range < MISSILE_HIT_RANGE)
+		{
+			// did we hit the player?
+			if (ships[shipIndex].isHostile)
+			{
+				flt_DamagePlayer(MISSILE_DIRECT_DAMAGE, ships[shipIndex].position.z < 0);
+			}
+			else
+			{
+				// just kill the non-player that got hit
+				ships[ships[shipIndex].target].toExplode = true;
+
+				// is the player nearby to the blast to get splash damage?
+				if (magnitude(ships[shipIndex].position) < MISSILE_SPLASH_RANGE)
+				{
+					flt_DamagePlayer(MISSILE_SPLASH_DAMAGE, ships[shipIndex].position.z < 0);
+				}
+			}
+
+			// the missile blows up and is gone
+			ships[shipIndex].toExplode = true;
+			return;
+		}
+
 		// destroy missiles facing ECM or whose targets are dead
 		if (ecmTimer > 0 || ships[shipIndex].target == MAX_SHIPS)
 		{
@@ -427,7 +454,7 @@ ships[shipIndex].orientation.a[7], ships[shipIndex].orientation.a[8]);
 	// pitch is simple
 	const signed int roofAlign = dot(goVector, getRow(ships[shipIndex].orientation, 1));
 	dbg_printf("current roof alignment: %d\n", roofAlign);
-	ships[shipIndex].pitch = roofAlign > 0 ? 3 : -3;
+	ships[shipIndex].pitch = roofAlign > 0 ? -3 : 3;
 	dbg_printf("pitch set: %d\n", ships[shipIndex].pitch);
 
 	// roll is not...
@@ -450,13 +477,13 @@ ships[shipIndex].orientation.a[7], ships[shipIndex].orientation.a[8]);
 		dbg_printf("roll set: %d\n", ships[shipIndex].roll);
 	}
 
+	// flip the nose vector back if inverted earlier
+	if (ships[shipIndex].shipType == BP_MISSILE) shp_FlipNose(shipIndex);
+
 	if (goAlign >= 22 * 256) // speed up if charging towards target
 	{
 		ships[shipIndex].acceleration = 3;
 	}
-
-	// flip the nose vector back if inverted earlier
-	if (ships[shipIndex].shipType == BP_MISSILE) shp_FlipNose(shipIndex);
 
 	// don't slow down if we still need to do lots of turning
 	else if (goAlign < 18 * 256 && goAlign > -18 * 256) ships[shipIndex].acceleration = 0;

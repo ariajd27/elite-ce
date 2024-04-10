@@ -29,6 +29,7 @@ void drawDashboard();
 void doFlight();
 
 void flt_DoFrame(bool dashboardVisible);
+void flt_DamagePlayer(unsigned char amount, bool fromBack);
 void flt_Death();
 
 #endif

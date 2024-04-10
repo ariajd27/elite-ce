@@ -46,14 +46,19 @@ unsigned char junkAmt;
 unsigned char extraSpawnDelay;
 unsigned char ecmTimer;
 
-bool stationSoi;
+enum {
+	STANDBY,
+	SEARCHING, 
+	LOCKED
+} missileStatus;
+unsigned char missileTarget;
 
 char flightMsg[FLTMSG_MAX_LENGTH];
 unsigned char flightMsgLength;
 unsigned char flightMsgTimer;
 
-unsigned char starJumpHeld;
-unsigned char galaxyJumpHeld;
+bool stationSoi;
+bool flt_playerToDie;
 
 void flt_Init()
 {
@@ -65,6 +70,7 @@ void flt_Init()
 	player_cabin_temp = 30;
 
 	player_missiles = 3;
+	missileStatus = STANDBY;
 
 	player_energy = 255;
 	player_fore_shield = 255;
@@ -77,8 +83,8 @@ void flt_Init()
 	viewDirMode = FRONT;
 	flightMsgTimer = 0;
 	player_condition = DOCKED;
-
 	stationSoi = true;
+	flt_playerToDie = false;
 }
 
 void flt_DoTunnelAnimation(unsigned char step)
@@ -315,7 +321,29 @@ void drawDashboard()
 
 	// altitude display
 	gfx_SetColor(player_altitude < 32 ? COLOR_RED : COLOR_YELLOW);
-	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 42, 1 + player_altitude / 8, 3);	
+	gfx_FillRectangle(DASH_HOFFSET + 20, DASH_VOFFSET + 42, 1 + player_altitude / 8, 3);
+
+	// missiles display
+	for (unsigned char i = 0; i < player_missiles; i++)
+	{
+		gfx_SetColor(COLOR_GREEN);
+		if (i + 1 == player_missiles)
+		{
+			switch (missileStatus)
+			{
+				case LOCKED:
+					gfx_SetColor(COLOR_RED);
+					break;
+				case SEARCHING:
+					gfx_SetColor(COLOR_YELLOW);
+					break;
+				default: // STANDBY
+					break;
+			}
+		}
+
+		gfx_FillRectangle(DASH_HOFFSET_CENTER - 10 - 8 * i, DASH_VOFFSET + 49, 6, 5);
+	}
 }
 
 bool flt_CanJump()
@@ -347,8 +375,8 @@ bool flt_CanJump()
 		}
 	}
 	else if (ships[planetIndex].position.z > 0
-		  && ships[planetIndex].position.x < ships[planetIndex].position.z 
-		  && ships[planetIndex].position.y < ships[planetIndex].position.z)
+		  && intpow(ships[planetIndex].position.x >> 8, 2) 
+		   + intpow(ships[planetIndex].position.y >> 8, 2) <= 96)
 	{
 		flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
 		return false;
@@ -476,45 +504,50 @@ void flt_TryLasers()
 	RestoreAxes(viewDirMode);
 }
 
-void flt_TryMissile()
+void flt_TryFindMissileTarget()
 {
 	if (!player_missiles) return; // no missiles to shoot
-	if (numShips + 1 >= MAX_SHIPS) return; // no room to spawn a missile
 
 	// who are we aiming at?
-	unsigned char target;
-	for (target = 0; true; target++)
+	for (missileTarget = 0; missileTarget < numShips; missileTarget++)
 	{
-		if (target >= numShips) return; // failed to find a target
-
 		// is this a valid target?
-		if (ships[target].position.z <= 0) continue;
-		if (ships[target].shipType > PLANET) continue;
-		if (ships[target].isExploding) continue;
+		if (ships[missileTarget].position.z <= 0) continue;
+		if (ships[missileTarget].shipType > PLANET) continue;
+		if (ships[missileTarget].isExploding) continue;
 
 		// is it close enough to see?
-		const unsigned int z = intabs(ships[target].position.z);
+		const unsigned int z = intabs(ships[missileTarget].position.z);
 		if (z > MAX_MISSILE_LOCK_RANGE) continue;
 
 		// is it within a targeting arc?
-		if (intabs(ships[target].position.x) / 8 > z) continue;
-		if (intabs(ships[target].position.y) / 8 > z) continue;
+		if (intabs(ships[missileTarget].position.x) > (z >> 3)) continue;
+		if (intabs(ships[missileTarget].position.y) > (z >> 3)) continue;
 
 		// we've found our target!
+		missileStatus = LOCKED;
 		break;
 	}
-	
+}
+
+void flt_LaunchMissile()
+{	
+	if (numShips + 1 >= MAX_SHIPS) return; // no room to spawn a missile
+
 	struct Ship* missile = NewShip(BP_MISSILE,
 								   (struct vector_t){ 0, MISSILE_LAUNCH_Y, MISSILE_LAUNCH_Z },
 								   Matrix(256,0,0, 0,256,0, 0,0,-256));
 	missile->speed = MISSILE_LAUNCH_SPEED;
-	missile->target = target;
+	missile->target = missileTarget;
 	missile->aggro = 64;
 
 	player_missiles--;
 
 	// make the target mad on launch -- they see the missile lock
-	if (ships[target].shipType != BP_ASTEROID) ships[target].isHostile = true;
+	if (ships[missileTarget].shipType != BP_ASTEROID) ships[missileTarget].isHostile = true;
+
+	// reset for the next missile -- only if we actually managed to shoot
+	missileStatus = STANDBY;
 }
 
 bool doFlightInput()
@@ -522,66 +555,60 @@ bool doFlightInput()
 	updateKeys();
 
 	// acceleration
-	if (kb_IsDown(kb_Key2nd) && player_speed < PLAYER_MAX_SPEED) player_speed++;
-	else if (kb_IsDown(kb_KeyAlpha) && player_speed > 0) player_speed--;
+	if (second > 0 && player_speed < PLAYER_MAX_SPEED) player_speed++;
+	else if (alpha > 0 && player_speed > 0) player_speed--;
 	
-	if (!yequ) // pitch/roll controls
+	if (yequ == 0) // pitch/roll controls
 	{
 		// roll
-		if (left) player_roll -= 4;
-		else if (right) player_roll += 4;
-
-		// damping
-		else if (-1 <= player_roll && player_roll <= 1) player_roll = 0; 
-		else if (player_roll < 0) player_roll += 2;
-		else if (player_roll > 0) player_roll -= 2;
+		if (left > 0) player_roll -= 6;
+		else if (right > 0) player_roll += 6;
 
 		// clamping
-		if (player_roll > 31) player_roll = 31;
-		else if (player_roll < -31) player_roll = -31;
+		if (player_roll > 32) player_roll = 32;
+		else if (player_roll < -32) player_roll = -32;
 	
 		// pitch
-		if (up) player_pitch++;
-		else if (down) player_pitch--;
-
-		// damping
-		else if (player_pitch < 0) player_pitch++;
-		else if (player_pitch > 0) player_pitch--;
+		if (up > 0) player_pitch += 2;
+		else if (down > 0) player_pitch -= 2;
 
 		// clamping
-		if (player_pitch > 7) player_pitch = 7;
-		else if (player_pitch < -7) player_pitch = -7;
+		if (player_pitch > 8) player_pitch = 8;
+		else if (player_pitch < -8) player_pitch = -8;
 	}
 	else // view switching
 	{
-		if (up) viewDirMode = FRONT;
-		else if (left) viewDirMode = LEFT;
-		else if (right) viewDirMode = RIGHT;
-		else if (down) viewDirMode = REAR;
-
-		// still need to do pitch/roll damping
-		if (player_pitch < 0) player_pitch++;
-		else if (player_pitch > 0) player_pitch--;
-		if (player_roll < 0) player_roll++;
-		else if (player_roll > 0) player_roll--;	
+		if (up > 0) viewDirMode = FRONT;
+		else if (left > 0) viewDirMode = LEFT;
+		else if (right > 0) viewDirMode = RIGHT;
+		else if (down > 0) viewDirMode = REAR;
 	}
+
+	if (player_pitch < 0) player_pitch++;
+	else if (player_pitch > 0) player_pitch--;
+	if (player_roll < 0) player_roll += 2;
+	else if (player_roll > 0) player_roll -= 2;	
 
 	// engine controls
-	if ((prgm || clear) && flt_CanHyperdrive())
+	if (((prgm | clear) > 0) && flt_CanHyperdrive())
 	{
-		if (prevClear >= STAR_JUMP_HOLD_TIME) flt_DoHyperdrive(false);
-		else if (prevPrgm >= GALAXY_JUMP_HOLD_TIME) flt_DoHyperdrive(true);
+		if (clear >= STAR_JUMP_HOLD_TIME) flt_DoHyperdrive(false);
+		else if (prgm >= GALAXY_JUMP_HOLD_TIME) flt_DoHyperdrive(true);
 		else flt_SetMsg("Preparing jump...", 2);
 	}
-	else if (vars && prevVars == 0) flt_TryInSystemJump();
+	else if (vars == 1) flt_TryInSystemJump();
 
 	// weapons
-	if (mode) flt_TryLasers();
-	if (graphVar && prevGraphVar == 0) flt_TryMissile();
+	if (mode > 0) flt_TryLasers();
+	if (graphVar == 1 && player_missiles > 0)
+	{
+		if (missileStatus == STANDBY) missileStatus = SEARCHING;
+		else if (missileStatus == LOCKED) flt_LaunchMissile();
+	}
+	if (apps == 1) missileStatus = STANDBY;
 
-	updatePrevKeys();
-
-	if (graph && prevGraph == 1) // 1 bc we are after 1 update...
+	// only question left: do we exit or not?
+	if (graph == 1)
 	{
 		currentMenu = MAIN;
 		return false;
@@ -719,10 +746,11 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 	if (player_speed <= 5)
 	{
 		player_speed = 0;
+		flt_DamagePlayer(15, FRONT);
 		return 1;
 	}
 	
-	flt_Death();
+	flt_playerToDie = true;
 	return 2;
 }
 
@@ -775,7 +803,7 @@ void flt_TrySpawnShips()
 		// check for spawning a cop
 		if (rand() % 256 < player_outlaw)
 		{
-			struct Ship* cop = NewShip(BP_VIPER, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+			struct Ship* cop = NewShip(BP_VIPER, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			cop->aggro = 60;
 			cop->isHostile = true;
 			
@@ -799,7 +827,7 @@ void flt_TrySpawnShips()
 		
 			const unsigned char hunterType = rand() % 2 ? BP_COBRA : BP_PYTHON;
 
-			struct Ship* enemy = NewShip(hunterType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+			struct Ship* enemy = NewShip(hunterType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			enemy->isHostile = true;
 			enemy->aggro = 28;
 			enemy->hasEcm = rand() % 256 >= 200; // 22% chance
@@ -815,7 +843,7 @@ void flt_TrySpawnShips()
 
 			const unsigned char pirateType = rand() % 2 ? BP_MAMBA : BP_SIDEWINDER;
 
-			struct Ship* enemy = NewShip(pirateType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+			struct Ship* enemy = NewShip(pirateType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			enemy->isHostile = true;
 			enemy->aggro = rand() % 64;
 			enemy->hasEcm = rand() % 256 <= 10; // 4% chance
@@ -847,13 +875,15 @@ void flt_DoFrame(bool dashboardVisible)
 	if (player_energy < 255) player_energy++;
 	if (ecmTimer > 0) ecmTimer--;
 
+	// every cycle bc it's important for the physics system
+	if (missileStatus == SEARCHING) flt_TryFindMissileTarget();
+
 	// tidy vectors for each ship -- one ship per cycle
 	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
 
 	// do ai -- three ships per cycle
 	DoAI(drawCycle % MAX_SHIPS);
-	DoAI((drawCycle + MAX_SHIPS / 3) % MAX_SHIPS);
-	DoAI((drawCycle + 2 * MAX_SHIPS / 3) % MAX_SHIPS);
+	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
 
 	for (unsigned char i = 0; i < numShips; i++)
 	{
@@ -907,13 +937,9 @@ void flt_DoFrame(bool dashboardVisible)
 
 					return;
 
-				case 2:
+				default: 
 
-					player_dead = true;
-
-					return;
-
-				default: break; // if no dock, but no death, just keep going
+					break; // if no dock, just keep going -- death is at the bottom of the loop
 			}
 		}
 	}
@@ -921,6 +947,12 @@ void flt_DoFrame(bool dashboardVisible)
 	drawSpaceView();
 
 	if (dashboardVisible) drawDashboard();
+
+	if (flt_playerToDie)
+	{
+		flt_Death();
+		return;
+	}
 
 	// this flag is set when lasers are fired
 	if (drawLasers)
@@ -939,6 +971,8 @@ void flt_DoFrame(bool dashboardVisible)
 
 void doFlight()
 {
+	flt_playerToDie = false;
+
 	while (doFlightInput())
 	{
 		clock_t frameTimer = clock();
@@ -953,6 +987,32 @@ void doFlight()
 
 		drawCycle++;
 	}
+}
+
+void flt_DamagePlayer(unsigned char amount, bool fromBack)
+{
+	unsigned char* relevantShield = fromBack ? &player_aft_shield : &player_fore_shield;
+	
+	// if the shield can sustain the damage, then it does, and we are done
+	if (amount < *relevantShield)
+	{
+		*relevantShield -= amount;
+		return;
+	}
+
+	// otherwise, we penetrate it and keep going
+	amount -= *relevantShield;
+	*relevantShield = 0;
+
+	// if the energy banks can take it, then they do, and we are done
+	if (amount < player_energy)
+	{
+		player_energy -= amount;
+		return;
+	}
+
+	// otherwise, the player is dead :(
+	flt_playerToDie = true;
 }
 
 void flt_Death()

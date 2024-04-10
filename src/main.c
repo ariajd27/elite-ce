@@ -255,19 +255,19 @@ bool doMenuInput()
 
 			returnMenu = player_condition == DOCKED ? MARKET : NONE;
 
-			if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+			if (up == 1 || up > HOLD_TIME)
 			{
 				if (menu_selOption > 0) menu_selOption--;
 				else menu_selOption = NUM_MENU_OPTIONS - 1;
 			}
 				
-			if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+			if (down == 1 || down > HOLD_TIME)
 			{
 				menu_selOption++;
 				if (menu_selOption >= NUM_MENU_OPTIONS) menu_selOption = 0;
 			}
 
-			if ((enter && prevEnter == 0) || (graph && prevGraph == 0))
+			if ((enter == 1) || (graph == 1))
 			{
 				switch (menu_selOption)
 				{
@@ -306,31 +306,31 @@ bool doMenuInput()
 
 			returnMenu = MAIN;
 
-			if (left && (prevLeft == 0 || prevLeft > HOLD_TIME))
+			if (left == 1 || left > HOLD_TIME)
 			{
 				gen_crsX -= 4;
 				while (gen_crsX <= -4 * LCL_MAP_DXMAX) gen_crsX++;
 			}
-			else if (right && (prevRight == 0 || prevRight > HOLD_TIME))
+			else if (right == 1 || right > HOLD_TIME)
 			{
 				gen_crsX += 4;
 				while (gen_crsX >= 4 * LCL_MAP_DXMAX) gen_crsX--;
 			}
 				
-			if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+			if (up == 1 || up > HOLD_TIME)
 			{
 				gen_crsY -= 4;
 				while (gen_crsY <= -2 * LCL_MAP_DYMAX + SML_CRS_SIZE + SML_CRS_SPREAD) gen_crsY++;
 			}
-			else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+			else if (down == 1 || down > HOLD_TIME)
 			{
 				gen_crsY += 4;
 				while (gen_crsY >= 2 * LCL_MAP_DYMAX) gen_crsY--;
 			}
 
-			if (enter && prevEnter == 0) gen_SelectNearestSystem(true);
+			if (enter == 1) gen_SelectNearestSystem(true);
 
-			if (graph && prevGraph == 0)
+			if (graph == 1)
 			{
 				currentMenu = GALAXY_MAP;
 				gen_ResetCursorPosition(false);
@@ -342,31 +342,31 @@ bool doMenuInput()
 
 			returnMenu = LOCAL_MAP;
 
-			if (left && (prevLeft == 0 || prevLeft > HOLD_TIME))
+			if (left == 1 || left > HOLD_TIME)
 			{
 				gen_crsX -= 4;
 				while (gen_crsX < 0) gen_crsX++;
 			}
-			else if (right && (prevRight == 0 || prevRight > HOLD_TIME))
+			else if (right == 1 || right > HOLD_TIME)
 			{
 				gen_crsX += 4;
 				while (gen_crsX > 256) gen_crsX--;
 			}
 				
-			if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+			if (up == 1 || up > HOLD_TIME)
 			{
 				gen_crsY -= 4;
 				while (gen_crsY < 0) gen_crsY++;
 			}
-			else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+			else if (down == 1 || down > HOLD_TIME)
 			{
 				gen_crsY += 4;
 				while (gen_crsY > 128) gen_crsY--;
 			}
 
-			if (enter && prevEnter == 0) gen_SelectNearestSystem(false);
-			else if (yequ && prevYequ == 0) gen_ResetCursorPosition(true);
-			else if (graph && prevGraph == 0) currentMenu = SEL_DATA;
+			if (enter == 1) gen_SelectNearestSystem(false);
+			else if (yequ == 1) gen_ResetCursorPosition(true);
+			else if (graph == 1) currentMenu = SEL_DATA;
 
 			break;
 
@@ -380,20 +380,20 @@ bool doMenuInput()
 
 			returnMenu = UPGRADES;
 
-			if (graph && prevGraph == 0) currentMenu = MAIN;
+			if (graph == 1) currentMenu = MAIN;
 
-			if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+			if (up == 1 || up > HOLD_TIME)
 			{
 				menu_selOption--;
 				if (menu_selOption >= NUM_TRADE_GOODS) menu_selOption = NUM_TRADE_GOODS - 1;
 			}
-			else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+			else if (down == 1 || down > HOLD_TIME)
 			{
 				menu_selOption++;
 				if (menu_selOption >= NUM_TRADE_GOODS) menu_selOption = 0;
 			}
 
-			if (enter && prevEnter == 0)
+			if (enter == 1)
 			{
 				mkt_Buy(menu_selOption);
 				drawMenu(false);
@@ -418,24 +418,24 @@ bool doMenuInput()
 													 ? thisSystemData.techLevel + 2
 											         : NUM_UPGRADES + 1;
 
-				if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+				if (up == 1 || up > HOLD_TIME)
 				{
 					menu_selOption--;
 					if (menu_selOption > displayedOptions) menu_selOption = displayedOptions;
 				}
-				else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+				else if (down == 1 || down > HOLD_TIME)
 				{
 					menu_selOption++;
 					if (menu_selOption > displayedOptions) menu_selOption = 0;
 				}
 			}
 
-			if (enter && prevEnter == 0)
+			if (enter == 1)
 			{
 				if (upg_Buy(menu_selOption)) drawMenu(false); // only if something was bought
 			}
 
-			if (graph && prevGraph == 0)
+			if (graph == 1)
 			{
 				currentMenu = MARKET;
 			}
@@ -455,12 +455,12 @@ bool doMenuInput()
 
 			if (player_condition == DOCKED && !mkt_InventoryEmpty())
 			{
-				if (up && (prevUp == 0 || prevUp > HOLD_TIME))
+				if (up == 1 || up > HOLD_TIME)
 				{
 					menu_selOption--;
 					if (menu_selOption >= NUM_TRADE_GOODS) menu_selOption = NUM_TRADE_GOODS - 1;
 				}
-				else if (down && (prevDown == 0 || prevDown > HOLD_TIME))
+				else if (down == 1 || down > HOLD_TIME)
 				{
 					menu_selOption++;
 					if (menu_selOption >= NUM_TRADE_GOODS) menu_selOption = 0;
@@ -475,7 +475,7 @@ bool doMenuInput()
 					gfx_BlitRectangle(gfx_buffer, xor_clipX, xor_clipY, xor_clipWidth, xor_clipHeight);
 				}
 
-				if (enter && prevEnter == 0)
+				if (enter == 1)
 				{
 					mkt_Sell(menu_selOption);
 					drawMenu(true);
@@ -489,9 +489,7 @@ bool doMenuInput()
 
 	if (gen_crsX != prevCrsX || gen_crsY != prevCrsY) gen_RedrawCursorPosition(prevCrsX, prevCrsY);
 	
-	if (yequ && prevYequ == 0) currentMenu = returnMenu;
-
-	updatePrevKeys();
+	if (yequ == 1) currentMenu = returnMenu;
 
 	while (clock() - frameTimer < FRAME_TIME);
 
@@ -566,7 +564,7 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 		updateKeys();
 
-		if (clear && prevClear == 0)
+		if (clear == 1)
 		{
 			numShips = 0;
 			return 2;
@@ -574,20 +572,18 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 		if (!acceptEnter)
 		{
-			if (yequ && prevYequ == 0)
+			if (yequ == 1)
 			{
 				returnVal = 0;
 				break;
 			}
-			if (graph && prevGraph == 0)
+			if (graph == 1)
 			{
 				returnVal = 1;
 				break;
 			}
 		}
-		else if (enter && prevEnter == 0) break;
-
-		updatePrevKeys();
+		else if (enter == 1) break;
 	}
 
 	numShips = 0;
@@ -685,7 +681,7 @@ bool nameCmdr() // returns TRUE if abort requested by user
 			cmdr_name[cmdr_name_length] = '\0'; // so that the reset writing call can get the length right
 		}
 
-		if (clear && prevClear == 0)
+		if (clear == 1)
 		{
 			if (cmdr_name_length > 0)
 			{
@@ -697,10 +693,8 @@ bool nameCmdr() // returns TRUE if abort requested by user
 			}
 			else return true;
 		}
-
-		updatePrevKeys();
 	}
-	while (!kb_IsDown(kb_KeyEnter));
+	while (enter == 0);
 
 	return false;
 }
@@ -708,7 +702,7 @@ bool nameCmdr() // returns TRUE if abort requested by user
 bool run()
 {
 	// this will stop the program from immediately exiting if clear is depressed
-	prevClear = 1;
+	clear = 1;
 
 	// load the gamestate for the Jameson default save
 	// this will be overwritten if a save is detected and selected
