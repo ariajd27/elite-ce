@@ -632,6 +632,11 @@ void flt_TrySpawnStation()
 	if (intabs(stationPos.y) > 49152) return;
 	if (intabs(stationPos.z) > 49152) return;
 
+	// we are going to spawn the station if we get here. but first we must delete the star
+	unsigned char starIndex;
+	for (starIndex = 0; ships[starIndex].shipType != SUN; starIndex++);
+	RemoveShip(starIndex);
+
 	// spawn the station
 	struct Ship* station = NewShip(BP_CORIOLIS,
 								   stationPos,
