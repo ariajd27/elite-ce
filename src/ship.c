@@ -372,8 +372,11 @@ void DoAI(unsigned char shipIndex)
 			}
 			else
 			{
-				// just kill the non-player that got hit
-				ships[ships[shipIndex].target].toExplode = true;
+				// just kill the non-player that got hit, unless it's a station
+				if (ships[ships[shipIndex].target].shipType != BP_CORIOLIS)
+				{
+					ships[ships[shipIndex].target].toExplode = true;
+				}
 
 				// is the player nearby to the blast to get splash damage?
 				if (magnitude(ships[shipIndex].position) < MISSILE_SPLASH_RANGE)
