@@ -112,6 +112,8 @@
 #define MISSILE_SPLASH_DAMAGE 80
 #define MISSILE_SPLASH_RANGE 256 // TODO
 
+#define ECM_DURATION 100 // actually no idea how long this is, TODO check it
+
 #define EXPLOSION_START_SIZE 18
 #define EXPLOSION_GROW_RATE 4
 #define EXPLOSION_PARTICLE_SIZE 2

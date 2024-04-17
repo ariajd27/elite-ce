@@ -439,7 +439,22 @@ void DoAI(unsigned char shipIndex)
 	const signed int goAlign = (ships[shipIndex].shipType == BP_MISSILE ? 1 : -1) 
 							 * dot(goVector, getRow(ships[shipIndex].orientation, 2));
 
-	// TODO consider firing weapons, using ECM
+	// TODO consider firing weapons
+	
+	// consider using ECM
+	if (ships[shipIndex].hasEcm)
+	{
+		// is there a missile chasing us?
+		for (unsigned char missileIndex = 0; missileIndex < numShips; missileIndex++)
+		{
+			if (ships[missileIndex].shipType == BP_MISSILE && ships[missileIndex].target == shipIndex)
+			{
+				// if so, turn on ECM
+				ecmTimer = ECM_DURATION;
+				break;
+			}
+		}
+	}
 
 	// steering and thrust!
 	dbg_printf("current position: (%d, %d, %d)\n", ships[shipIndex].position.x, ships[shipIndex].position.y, ships[shipIndex].position.z);
