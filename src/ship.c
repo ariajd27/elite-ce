@@ -23,7 +23,7 @@ struct Ship* NewShip(unsigned char shipType, struct vector_t position, struct in
 	for (unsigned char i = 0; i < 9; i++) ships[numShips].orientation.a[i] = orientation.a[i];
 
 	ships[numShips].isHostile = false;
-	ships[numShips].aggro = 255;
+	ships[numShips].aggro = 64;
 	// ships[numShips].target not initialized
 
 	ships[numShips].isExploding = 0;
@@ -95,7 +95,7 @@ struct int_point_t ProjVertex(const unsigned char shipIndex,
 	const struct vector_t vertexVector = {
 		(vertexData[3] & 0b10000000) != 0 ? -1 * vertexData[0] : vertexData[0],
 		(vertexData[3] & 0b01000000) != 0 ? -1 * vertexData[1] : vertexData[1],
-		(vertexData[3] & 0b00100000) != 0 ? vertexData[2] : -1 * vertexData[2]
+		(vertexData[3] & 0b00100000) != 0 ? -1 * vertexData[2] : vertexData[2]
 	};
 
 	return ProjPoint(add(vMul(transformation, vertexVector), ships[shipIndex].position));
@@ -190,7 +190,7 @@ void ShipAsWireframe(unsigned char shipIndex)
 				struct vector_t const faceNormal = {
 					(faceData[0] & 0b10000000) != 0 ? -1 * dataX : dataX,
 					(faceData[0] & 0b01000000) != 0 ? -1 * dataY : dataY,
-					(faceData[0] & 0b00100000) != 0 ? dataZ : -1 * dataZ,
+					(faceData[0] & 0b00100000) != 0 ? -1 * dataZ : dataZ,
 				};
 
 				struct vector_t lineOfSight = 
@@ -310,23 +310,13 @@ void DrawShip(unsigned char shipIndex)
 	// if it's exploding, as a cloud of dust
 	if (ships[shipIndex].isExploding) ShipAsExplosion(shipIndex);
 	// if it's far away, as a dot
-	else if (ships[shipIndex].position.z / 512 > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	else if ((ships[shipIndex].position.z >> 9) > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
 	// otherwise, as a beautiful 3d wireframe
 	else ShipAsWireframe(shipIndex);
 }
 
-void shp_FlipNose(unsigned char const shipIndex)
-{
-	for (unsigned char i = 6; i < 9; i++)
-	{
-		ships[shipIndex].orientation.a[i] = -ships[shipIndex].orientation.a[i];
-	}
-}
-
 void DoAI(unsigned char shipIndex)
 {
-	// return; // JUST FOR TESTING TO DISABLE AI
-
 	// is this even a real thing?
 	if (shipIndex >= numShips) return;
 
@@ -400,9 +390,6 @@ void DoAI(unsigned char shipIndex)
 		// missiles head towards their target
 		if (ships[shipIndex].isHostile) goVector = mul(ships[shipIndex].position, -1);
 		else goVector = sub(ships[ships[shipIndex].target].position, ships[shipIndex].position);
-
-		// missiles are drawn backwards, so invert the nose vector
-		shp_FlipNose(shipIndex);
 	}
 	else if (ships[shipIndex].isHostile)
 	{
@@ -421,7 +408,7 @@ void DoAI(unsigned char shipIndex)
 			const unsigned int distance = intabs(ships[shipIndex].position.x)
 							   			| intabs(ships[shipIndex].position.y)
 							   			| intabs(ships[shipIndex].position.z);
-			if ((distance >> 9) != 0 && rand() % 128 < ships[shipIndex].aggro)
+			if ((distance >> 9) != 0 && rand() % 64 < ships[shipIndex].aggro)
 			{
 				dbg_printf("aggressive mode!\n");
 				goVector = mul(goVector, -1);
@@ -438,9 +425,7 @@ void DoAI(unsigned char shipIndex)
 
 	// normalizing means that goAlign will have a consistent meaning
 	goVector = normalize(goVector);
-	// missiles are backwards, but their goAligns shouldn't be
-	const signed int goAlign = (ships[shipIndex].shipType == BP_MISSILE ? 1 : -1) 
-							 * dot(goVector, getRow(ships[shipIndex].orientation, 2));
+	const signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
 
 	// TODO consider firing weapons
 	
@@ -495,9 +480,6 @@ ships[shipIndex].orientation.a[7], ships[shipIndex].orientation.a[8]);
 		dbg_printf("roll set: %d\n", ships[shipIndex].roll);
 	}
 
-	// flip the nose vector back if inverted earlier
-	if (ships[shipIndex].shipType == BP_MISSILE) shp_FlipNose(shipIndex);
-
 	if (goAlign >= 22 * 256) // speed up if charging towards target
 	{
 		ships[shipIndex].acceleration = 3;
@@ -535,7 +517,7 @@ void MoveShip(unsigned char shipIndex)
 	// move ship along nose vector
 	struct vector_t const noseVector = getRow(ships[shipIndex].orientation, 2);
 	ships[shipIndex].position = add(ships[shipIndex].position, 
-			sDiv(mul(noseVector, -ships[shipIndex].speed), 64));
+			sDiv(mul(noseVector, ships[shipIndex].speed), 64));
 
 	// apply acceleration, clamping between 0 and max speed for ship type
 	if (ships[shipIndex].acceleration > 0 || ships[shipIndex].speed >= -1 * ships[shipIndex].acceleration)
