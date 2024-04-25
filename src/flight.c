@@ -376,7 +376,7 @@ bool flt_CanJump()
 	}
 	else if (ships[planetIndex].position.z > 0
 		  && intpow(ships[planetIndex].position.x >> 8, 2) 
-		   + intpow(ships[planetIndex].position.y >> 8, 2) <= 96)
+		   + intpow(ships[planetIndex].position.y >> 8, 2) <= 9276)
 	{
 		flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
 		return false;
