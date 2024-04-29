@@ -148,7 +148,7 @@ void launch()
 	stationSoi = true;
 	struct Ship* station = NewShip(BP_CORIOLIS,
 								   (struct vector_t){ 0, 0, -256 },
-								   Matrix(256,0,0, 0,256,0, 0,0,-256));
+								   Matrix(256,0,0, 0,256,0, 0,0,256));
 	station->hasEcm = true;
 	station->roll = 127;
 

@@ -534,7 +534,7 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 	numShips = 0;
 	struct Ship* titleShip = NewShip(shipType, 
 									 (struct vector_t){ 0, 0, TTL_SHIP_START_Z }, 
-									 Matrix(256,0,0, 0,0,256, 0,256,0));
+									 Matrix(-256,0,0, 0,0,256, 0,256,0));
 	titleShip->pitch = 127;
 	titleShip->roll = 127;
 

@@ -336,7 +336,7 @@ void gen_DrawLocalMap()
 		// this deviates from the original game because in order to get the same
 		// display sizes for each system, we would have to implement the same
 		// text drawing subroutines as the original. i am not doing that. myeh.
-		xor_FillCircle(x, y, ((loopSeed.c & 0x0100) >> 8) + 1);
+		xor_FillCircle(x, y, ((loopSeed.c & 0x0100) >> 8) + 3);
 		
 		unsigned char row = y / 8;
 		if (labelOnLine[row]) row += 1;
