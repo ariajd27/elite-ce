@@ -8,6 +8,8 @@
 #include "font_data.h"
 #include "variables.h"
 
+#include <debug.h>
+
 unsigned char xor_cursorX = 0;
 unsigned char xor_cursorY = 0;
 
@@ -288,33 +290,62 @@ void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned ch
 			  cY - trig_sin(56) * (signed int)r / 256);
 }
 
+// to be called only by xor_FillCircle() below
+void xor_RaggedLine(const signed int cX, const signed int cY,
+		const signed int thisRadius, const unsigned char fringeSize)
+{
+	if (cY < xor_clipY) return;
+	if (cY >= xor_clipY + xor_clipHeight) return;
+
+	const signed int thisModRadius = thisRadius + (fringeSize > 0 ? rand() % fringeSize : 0);
+		
+	signed int thisLeft = cX - thisModRadius;
+	if (thisLeft >= xor_clipX + xor_clipWidth) return;
+	if (thisLeft < xor_clipX) thisLeft = xor_clipX;
+
+	signed int thisRight = cX + thisModRadius;
+	if (thisRight < xor_clipX) return;
+	if (thisRight >= xor_clipX + xor_clipWidth) thisRight = xor_clipX + xor_clipWidth - 1;
+
+	xor_HorizontalLine(cY, thisLeft, thisRight);
+}
+
 void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
 {
-	const unsigned char fringeSize = r >= 96 ? 8 
+	const unsigned char fringeSize = r >= 96 ? 8
 								   : r >= 40 ? 4
 								   : r >= 16 ? 2
 								   : 0;
 
-	unsigned int radiusSquared = r * r;
+	signed int x = r;
+	signed int y = 0;
 
-	for (signed int yy = -1 * r; yy <= r; yy++)
+	signed int P = 1 - r;
+
+	while (x > y)
 	{
-		if (cY + yy < xor_clipY) continue;
-		if (cY + yy >= xor_clipY + xor_clipHeight) continue;
+		y++;
 
-		unsigned char thisRadius = intsqrt(radiusSquared - yy * yy);
-		if (fringeSize > 0) thisRadius += rand() % fringeSize;
+		if (P > 0)
+		{
+			x--;
+			P -= 2 * x;
+
+			if (x < y) break;
+
+			xor_RaggedLine(cX, cY + x, -y, fringeSize);
+			xor_RaggedLine(cX, cY - x, -y, fringeSize);
+		}
 		
-		signed int thisLeft = cX - thisRadius;
-		if (thisLeft >= xor_clipX + xor_clipWidth) continue;
-		if (thisLeft < xor_clipX) thisLeft = xor_clipX;
+		if (x <= y) break;
 
-		signed int thisRight = cX + thisRadius;
-		if (thisRight < xor_clipX) continue;
-		if (thisRight >= xor_clipX + xor_clipWidth) thisRight = xor_clipX + xor_clipWidth - 1;
+		P += 2 * y + 1;
 
-		xor_HorizontalLine(cY + yy, thisLeft, thisRight);
+		xor_RaggedLine(cX, cY + y, x, fringeSize);
+		xor_RaggedLine(cX, cY - y, x, fringeSize);
 	}
+
+	xor_RaggedLine(cX, cY, r, fringeSize);
 }
 
 void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, signed int vX, signed int vY, unsigned char end)
