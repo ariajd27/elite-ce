@@ -54,7 +54,7 @@
 
 #define CRS_SPREAD 10
 #define CRS_SIZE 10
-#define SML_CRS_SPREAD 4
+#define SML_CRS_SPREAD 5
 #define SML_CRS_SIZE 4
 
 #define RADAR_HCENTER (DASH_HOFFSET + dashleft_width + 74)

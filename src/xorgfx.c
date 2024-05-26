@@ -294,28 +294,42 @@ void xor_SteppedCircle(signed int cX, signed int cY, unsigned int r, unsigned ch
 void xor_RaggedLine(const signed int cX, const signed int cY,
 		const signed int thisRadius, const unsigned char fringeSize)
 {
+	dbg_printf("drawing slice at %d, %d with radius %d and fringe %u...\n", cX, cY, thisRadius, fringeSize);
+
 	if (cY < xor_clipY) return;
 	if (cY >= xor_clipY + xor_clipHeight) return;
 
 	const signed int thisModRadius = thisRadius + (fringeSize > 0 ? rand() % fringeSize : 0);
+
+	dbg_printf("randomized slice radius: %d\n", thisModRadius);
 		
-	signed int thisLeft = cX - thisModRadius;
+	signed int thisLeft = cX - thisModRadius + 1;
 	if (thisLeft >= xor_clipX + xor_clipWidth) return;
 	if (thisLeft < xor_clipX) thisLeft = xor_clipX;
+
+	dbg_printf("left position: %d\n", thisLeft);
 
 	signed int thisRight = cX + thisModRadius;
 	if (thisRight < xor_clipX) return;
 	if (thisRight >= xor_clipX + xor_clipWidth) thisRight = xor_clipX + xor_clipWidth - 1;
 
+	dbg_printf("right position: %d\n", thisRight);
+
 	xor_HorizontalLine(cY, thisLeft, thisRight);
+
+	dbg_printf("...slice drawn!");
 }
 
 void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
 {
+	dbg_printf("drawing circle at %d, %d with radius %u...\n", cX, cY, r);
+
 	const unsigned char fringeSize = r >= 96 ? 8
 								   : r >= 40 ? 4
 								   : r >= 16 ? 2
 								   : 0;
+
+	dbg_printf("fringe size: %u\n", fringeSize);
 
 	signed int x = r;
 	signed int y = 0;
@@ -333,8 +347,8 @@ void xor_FillCircle(signed int cX, signed int cY, unsigned char r)
 
 			if (x < y) break;
 
-			xor_RaggedLine(cX, cY + x, -y, fringeSize);
-			xor_RaggedLine(cX, cY - x, -y, fringeSize);
+			xor_RaggedLine(cX, cY + x, y, fringeSize);
+			xor_RaggedLine(cX, cY - x, y, fringeSize);
 		}
 		
 		if (x <= y) break;

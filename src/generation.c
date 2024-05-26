@@ -345,7 +345,7 @@ void gen_DrawLocalMap()
 		{
 			labelOnLine[row] = true;
 
-			xor_SetCursorPos((x - xor_clipX) / 8, row);
+			xor_SetCursorPos((x - xor_clipX) / 8 + 1, row);
 			gen_PrintName(&loopSeed, true);
 		}
 	}
