@@ -119,7 +119,7 @@ void drawMenu(bool resetCrs)
 			xor_SetCursorPos(20, 4);
 			xor_PrintChar(':');
 			gen_PrintName(&selectedSeed, true);
-			xor_Print("\nCondition: ");
+			xor_Print("\nCondition");
 			xor_SetCursorPos(20, 5);
 			xor_PrintChar(':');
 			printPlayerCondition();

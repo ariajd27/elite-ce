@@ -165,6 +165,23 @@ void resetPlayerCondition()
 	player_condition = GREEN;
 }
 
+void flt_CheckPlayerCondition()
+{
+	bool hostilesPresent = false;
+	for (unsigned char hostileIndex = 0; hostileIndex < numShips; hostileIndex++)
+	{
+		if (ships[hostileIndex].isHostile)
+		{
+			hostilesPresent = true;
+			break;
+		}
+	}
+
+	if (!hostilesPresent) player_condition = GREEN;
+	else if (player_energy < 128) player_condition = RED;
+	else player_condition = YELLOW;
+}
+
 void flt_SetMsg(char message[], unsigned char time)
 {
 	for (flightMsgLength = 0; message[flightMsgLength] != '\0'; flightMsgLength++)
@@ -872,8 +889,22 @@ void flt_DoFrame(bool dashboardVisible)
 	// periodic updates
 	if (drawCycle == 0) flt_TrySpawnShips(); // no need for "% 256" because drawCycle is a uint8
 	if (!stationSoi && drawCycle % 64 == 0) flt_TrySpawnStation();
-	if (drawCycle % 8 == 0) flt_UpdatePlayerAltitude();
-	else if (drawCycle % 8 == 4) flt_UpdateCabinTemperature();
+	switch (drawCycle % 8)
+	{
+		case 0:
+			flt_UpdatePlayerAltitude();
+			break;
+
+		case 2:
+			flt_UpdateCabinTemperature();
+			break;
+
+		case 4:
+			flt_CheckPlayerCondition();
+			break;
+
+		default: break;
+	}
 
 	// constant restoration
 	if (laserPulseCounter > 0) laserPulseCounter--;
