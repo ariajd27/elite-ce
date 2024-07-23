@@ -1,3 +1,4 @@
+// folds
 #include <graphx.h>
 #include <keypadc.h>
 #include <sys/rtc.h>
@@ -101,8 +102,7 @@ void drawMenu(bool resetCrs)
 			xor_FillRectangle(xor_clipX + LEFT_TEXT_INDENT - 2,
 					29 + 16 * menu_selOption, MM_SELBAR_WIDTH, 11);
 
-			break;
-			
+			break;			
 		case STATUS:
 
 			xor_CenterTextOffset("COMMANDER", 9, HEADER_Y, 1 + cmdr_name_length);
@@ -151,7 +151,6 @@ void drawMenu(bool resetCrs)
 			upg_DisplayEquipment();
 
 			break;
-
 		case THIS_DATA:
 		case SEL_DATA:
 
@@ -176,14 +175,12 @@ void drawMenu(bool resetCrs)
 			}
 
 			break;
-
 		case LOCAL_MAP:
 
 			xor_CenterText("SHORT RANGE CHART", 17, HEADER_Y);
 			gen_DrawLocalMap();
 
-			break;
-	
+			break;	
 		case GALAXY_MAP:
 
 			xor_CenterTextOffset("GALAXY CHART", 12, HEADER_Y, 2);
@@ -191,7 +188,6 @@ void drawMenu(bool resetCrs)
 			gen_DrawGalaxyMap();
 	
 			break;
-
 		case MARKET:
 
 			xor_CenterTextOffset(thisSystemData.name, strlen(thisSystemData.name), HEADER_Y, 12);
@@ -201,7 +197,6 @@ void drawMenu(bool resetCrs)
 					HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 
 			break;
-
 		case INVENTORY:
 
 			xor_CenterText(player_condition == DOCKED ? "SELL CARGO" : "CARGO HOLD", 10, HEADER_Y);
@@ -215,7 +210,6 @@ void drawMenu(bool resetCrs)
 			}
 
 			break;
-
 		case UPGRADES:
 
 			xor_CenterText("OUTFITTING", 10, HEADER_Y);
@@ -226,11 +220,9 @@ void drawMenu(bool resetCrs)
 					HEADER_DIVIDER_Y + 10 + 8 * menu_selOption, DASH_WIDTH - 10, 9);
 
 			break;
-
 		default:
 
 			xor_CenterText("UNDEFINED MENU", 14, HEADER_Y);
-	
 	}
 
 	gfx_BlitBuffer();
@@ -301,7 +293,6 @@ bool doMenuInput()
 			}
 
 			break;
-
 		case LOCAL_MAP:
 
 			returnMenu = MAIN;
@@ -337,7 +328,6 @@ bool doMenuInput()
 			}
 
 			break;
-
 		case GALAXY_MAP:
 
 			returnMenu = LOCAL_MAP;
@@ -369,13 +359,11 @@ bool doMenuInput()
 			else if (graph == 1) currentMenu = SEL_DATA;
 
 			break;
-
 		case SEL_DATA:
 
 			returnMenu = GALAXY_MAP;
 
 			break;
-
 		case MARKET:
 
 			returnMenu = UPGRADES;
@@ -409,7 +397,6 @@ bool doMenuInput()
 			}
 
 			break;
-
 		case UPGRADES:
 
 			returnMenu = UPGRADES;
@@ -450,7 +437,6 @@ bool doMenuInput()
 			}
 
 			break;
-
 		case INVENTORY:
 
 			if (player_condition == DOCKED && !mkt_InventoryEmpty())
@@ -481,7 +467,6 @@ bool doMenuInput()
 					drawMenu(true);
 				}
 			}
-
 		default:
 
 			returnMenu = MAIN;
