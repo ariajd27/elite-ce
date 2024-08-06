@@ -749,6 +749,12 @@ void flt_UpdateCabinTemperature() // also handles fuel scooping
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
 	dbg_printf("considering checking for docking...\n");
+	dbg_printf("station position: (%d, %d, %d)\n", ships[stationIndex].position.x,
+			ships[stationIndex].position.y, ships[stationIndex].position.z);
+	dbg_printf("station orientation: [[%d, %d, %d], [%d, %d, %d], [%d, %d, %d]]\n", ships[stationIndex].orientation.a[0],
+			ships[stationIndex].orientation.a[1], ships[stationIndex].orientation.a[2], ships[stationIndex].orientation.a[3],
+			ships[stationIndex].orientation.a[4], ships[stationIndex].orientation.a[5], ships[stationIndex].orientation.a[6],
+			ships[stationIndex].orientation.a[7], ships[stationIndex].orientation.a[8]);
 
 	if (player_speed == 0)
 		return 1;
@@ -757,33 +763,37 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 
 	bool successful = true;
 
-	dbg_printf("checking station orientation...\n");
-	if (ships[stationIndex].orientation.a[8] < 115) 
+	dbg_printf("checking station orientation...");
+	if (ships[stationIndex].orientation.a[8] > -115) 
 	{
+		dbg_printf(" failure!");
 		successful = false;
 	}
 
-	dbg_printf("checking station z position...\n");
+	dbg_printf("\nchecking station z position...");
 	if (ships[stationIndex].position.z < 119) 
 	{
+		dbg_printf(" failure!");
 		successful = false;
 	}
 
-	dbg_printf("checking station orientation...\n");
+	dbg_printf("\nchecking station orientation...");
 	if (ships[stationIndex].orientation.a[3] < 107 && ships[stationIndex].orientation.a[3] > -107) 
 	{
+		dbg_printf(" failure!");
 		successful = false;
 	}
 
-	dbg_printf("checking station hostility...\n");
+	dbg_printf("\nchecking station hostility...");
 	if (ships[stationIndex].isHostile)
 	{
+		dbg_printf(" failure!");
 		successful = false;
 	}
 
 	if (successful) return 0;
 
-	dbg_printf("check unsucessful! ");
+	dbg_printf("\ncheck unsucessful! ");
 	
 	if (player_speed <= 5)
 	{
