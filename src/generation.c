@@ -518,9 +518,9 @@ void gen_RotateBytes(unsigned char *start)
 
 void gen_ChangeGalaxy() // also changes systems!
 {
-	gen_RotateBytes(&originSeed.a);
-	gen_RotateBytes(&originSeed.b);
-	gen_RotateBytes(&originSeed.c);
+	gen_RotateBytes((unsigned char*)&originSeed.a);
+	gen_RotateBytes((unsigned char*)&originSeed.b);
+	gen_RotateBytes((unsigned char*)&originSeed.c);
 	gen_currentGalaxy++;
 
 	selectedSeed = originSeed;

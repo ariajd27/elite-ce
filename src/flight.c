@@ -745,9 +745,11 @@ void flt_UpdateCabinTemperature() // also handles fuel scooping
 }
 
 // these checks are pretty damn generous, but that's probably good for testing
-// returns 0 for success, 1 for failure, 2 for death
+// returns 0 for success or 1 for failure
 unsigned char flt_CheckForDocking(unsigned char stationIndex)
 {
+	dbg_printf("considering checking for docking...\n");
+
 	if (player_speed == 0)
 		return 1;
 	if (ships[stationIndex].position.z < 0) 
@@ -755,26 +757,47 @@ unsigned char flt_CheckForDocking(unsigned char stationIndex)
 
 	bool successful = true;
 
+	dbg_printf("checking station orientation...\n");
 	if (ships[stationIndex].orientation.a[8] < 115) 
+	{
 		successful = false;
+	}
+
+	dbg_printf("checking station z position...\n");
 	if (ships[stationIndex].position.z < 119) 
+	{
 		successful = false;
+	}
+
+	dbg_printf("checking station orientation...\n");
 	if (ships[stationIndex].orientation.a[3] < 107 && ships[stationIndex].orientation.a[3] > -107) 
+	{
 		successful = false;
+	}
+
+	dbg_printf("checking station hostility...\n");
 	if (ships[stationIndex].isHostile)
+	{
 		successful = false;
+	}
 
 	if (successful) return 0;
+
+	dbg_printf("check unsucessful! ");
 	
 	if (player_speed <= 5)
 	{
+		dbg_printf("damaging player.\n");
 		player_speed = 0;
 		flt_DamagePlayer(15, FRONT);
-		return 1;
 	}
-	
-	flt_playerToDie = true;
-	return 2;
+	else
+	{
+		dbg_printf("killing player.\n");
+		flt_playerToDie = true;
+	}
+
+	return 1;
 }
 
 struct vector_t flt_GetSpawnPos()
@@ -945,6 +968,9 @@ void flt_DoFrame(bool dashboardVisible)
 		// let the ship move itself
 		MoveShip(i);
 
+		// no docking/colliding/grabbing when dead
+		if (player_dead) continue;
+
 		// check if we are close enough to dock/collide/grab
 		if (ships[i].position.x > 191) continue;
 		if (ships[i].position.x < -191) continue;
@@ -956,27 +982,20 @@ void flt_DoFrame(bool dashboardVisible)
 		// docking? break out of flight loop if we succeed
 		if (ships[i].shipType == BP_CORIOLIS)
 		{
-			unsigned char dockOutcome = flt_CheckForDocking(i); // 0 = success
-																// 1 = failure
-																// 2 = death
-			switch (dockOutcome)
+			if (!flt_CheckForDocking(i))
 			{
-				case 0:
+				dbg_printf("docking successful!\n");
 
-					player_condition = DOCKED;
-					currentMenu = STATUS;
-					numShips = 0;
+				player_condition = DOCKED;
+				currentMenu = STATUS;
+				numShips = 0;
 
-					player_pitch = 0;
-					player_roll = 0;
+				player_pitch = 0;
+				player_roll = 0;
 		
-					flt_DoLaunchAnimation();
+				flt_DoLaunchAnimation();
 
-					return;
-
-				default: 
-
-					break; // if no dock, just keep going -- death is at the bottom of the loop
+				return;
 			}
 		}
 	}
@@ -985,7 +1004,7 @@ void flt_DoFrame(bool dashboardVisible)
 
 	if (dashboardVisible) drawDashboard();
 
-	if (flt_playerToDie)
+	if (!player_dead && flt_playerToDie)
 	{
 		flt_Death();
 		return;
@@ -1054,10 +1073,7 @@ void flt_DamagePlayer(unsigned char amount, bool fromBack)
 
 void flt_Death()
 {
-	// we should have gotten here from the do damage routine,
-	// but that could probably be called in lots of different
-	// places... they all need to accomodate the possibility
-	// of a game over
+	dbg_printf("killing player...\n");
 
 	player_dead = true;
 
@@ -1076,6 +1092,8 @@ void flt_Death()
 
 	player_speed = 0;
 
+	dbg_printf("playing animation...\n");
+
 	clock_t timer = clock();
 	while (clock() - timer < DEATH_SCREEN_TIME)
 	{
@@ -1088,4 +1106,6 @@ void flt_Death()
 
 		gfx_BlitBuffer();
 	}
+
+	dbg_printf("done with death animation!\n");
 }
