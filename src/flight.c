@@ -2,8 +2,8 @@
 #include <keypadc.h>
 
 #include "gfx/gfx.h"
-
 #include "xorgfx.h"
+#include "text.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -194,13 +194,26 @@ void flt_SetMsg(char message[], unsigned char time)
 
 void drawSpaceView()
 {
-	if (viewDirMode == FRONT) 
-		xor_CenterText("Front View", 10, 10);
-	else if (viewDirMode == LEFT)
-		xor_CenterText("Left View", 9, 10);
-	else if (viewDirMode == RIGHT)
-		xor_CenterText("Right View", 10, 10);
-	else xor_CenterText("Rear View", 9, 10);
+	txt_SetCursorPos(10, 9);
+	switch(viewDirMode)
+	{
+		case FRONT:
+			txt_PutRecursive(96); // "FRONT "
+			break;
+
+		case REAR:
+			txt_PutRecursive(97); // "REAR "
+			break;
+
+		case LEFT:
+			txt_PutRecursive(98); // "LEFT "
+			break;
+
+		case RIGHT:
+			txt_PutRecursive(99); // "RIGHT "
+			break;
+	}
+	txt_PutRecursive(15); // "VIEW "
 
 	xor_Crosshair(VIEW_HCENTER, VIEW_VCENTER, CRS_SPREAD, CRS_SIZE);
 
@@ -213,8 +226,7 @@ void drawSpaceView()
 	stardust_Draw(); // order is not really important here
 
 	if (flightMsgTimer == 0) return; // no message to draw
-	
-	xor_CenterText(flightMsg, flightMsgLength, FLTMSG_VOFFSET);
+	// TODO display flight message
 	flightMsgTimer--;
 }
 
@@ -1110,7 +1122,8 @@ void flt_Death()
 		clock_t frameTimer = clock();
 
 		flt_DoFrame(false);
-		xor_CenterText("GAME OVER", 9, VIEW_VCENTER);
+		txt_SetCursorPos(9, 9);
+		txt_PutRecursive(146); // "[UPPERCASE]GAME OVER"
 
 		while (clock() - frameTimer < FRAME_TIME);
 

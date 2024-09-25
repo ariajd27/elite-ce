@@ -5,6 +5,7 @@
 
 #include "generation.h"
 #include "xorgfx.h"
+#include "text.h"
 #include "variables.h"
 #include "market.h"
 #include "ship.h"
@@ -49,30 +50,6 @@ void gen_ResetDistanceToTarget()
 
 void gen_SetSystemData(struct gen_sysData_t* out, struct gen_seed_t* in)
 {
-	struct gen_seed_t nameSeed = *in;
-
-	unsigned char numIterations = (nameSeed.a & 0x0040) != 0 ? 4 : 3;
-	unsigned char strIndex = 0;
-	for (unsigned char i = 0; i < numIterations; i++)
-	{
-		unsigned char tknIndex = (nameSeed.c & 0x1f00) >> 7;
-		gen_Twist(&nameSeed.a, &nameSeed.b, &nameSeed.c);
-		if (tknIndex == 0) continue;
-
-		if (token[tknIndex] != '?')
-		{
-			out->name[strIndex] = token[tknIndex];
-			strIndex++;
-		}
-		if (token[tknIndex + 1] != '?')
-		{
-			out->name[strIndex] = token[tknIndex + 1];
-			strIndex++;
-		}
-	}
-
-	out->name[strIndex] = '\0';
-
 	out->government = (in->b & 0x0038) >> 3;
 	out->economy = (in->a & 0x0700) >> 8;
 	if (out->government < 2) out->economy |= 2;
@@ -85,11 +62,9 @@ void gen_SetSystemData(struct gen_sysData_t* out, struct gen_seed_t* in)
 	out->y = in->a >> 8;
 }
 
-void gen_PrintName(const struct gen_seed_t* in, const bool lowercasify)
+void gen_PrintName(const struct gen_seed_t* in)
 {
 	struct gen_seed_t nameSeed = *in;
-
-	bool printLowercase = false;
 
 	unsigned char numIterations = (nameSeed.a & 0x0040) != 0 ? 4 : 3;
 	for (unsigned char i = 0; i < numIterations; i++)
@@ -98,16 +73,7 @@ void gen_PrintName(const struct gen_seed_t* in, const bool lowercasify)
 		gen_Twist(&nameSeed.a, &nameSeed.b, &nameSeed.c);
 		if (tknIndex == 0) continue;
 
-		if (token[tknIndex] != '?')
-		{
-			xor_PrintChar(token[tknIndex] + (printLowercase ? 32 : 0));
-			printLowercase = lowercasify;
-		}
-		if (token[tknIndex + 1] != '?')
-		{
-			xor_PrintChar(token[tknIndex + 1] + (printLowercase ? 32 : 0));
-			printLowercase = lowercasify;
-		}
+		txt_PutTok(tknIndex);
 	}
 }
 
@@ -117,174 +83,83 @@ void gen_PrintEconomy(const struct gen_sysData_t* in)
 	{
 		case 0:
 		case 5:
-			xor_Print("Rich ");
+			txt_PutRecursive(10);
 			break;
 		case 1:
 		case 6:
-			xor_Print("Average ");
+			txt_PutRecursive(11);
 			break;
 		case 2:
 		case 7:
-			xor_Print("Poor ");
+			txt_PutRecursive(12);
 			break;
 		case 3:
 		case 4:
-			xor_Print("Mainly ");
+			txt_PutRecursive(13);
+			break;
 	}
 
-	if ((in->economy & 4) == 0) xor_Print("Industrial");
-	else xor_Print("Agricultural");
+	if ((in->economy & 4) == 0) txt_PutRecursive(8);
+	else txt_PutRecursive(9);
 }
 
 void gen_PrintGovernment(const struct gen_sysData_t* in)
 {
-	switch(in->government)
-	{
-		case 0:
-			xor_Print("Anarchy");
-			break;
-		case 1:
-			xor_Print("Feudal");
-			break;
-		case 2:
-			xor_Print("Multi-government");
-			break;
-		case 3:
-			xor_Print("Dictatorship");
-			break;
-		case 4:
-			xor_Print("Communist");
-			break;
-		case 5:
-			xor_Print("Confederacy");
-			break;
-		case 6:
-			xor_Print("Democracy");
-			break;
-		case 7:
-			xor_Print("Corporate State");
-	}
+	txt_PutRecursive(in->government + 17);
 }
 
 void gen_PrintTechnology(const struct gen_sysData_t* in)
 {
-	xor_PrintUInt8(in->techLevel + 1, 2);
+	txt_PutUInt32(in->techLevel + 1, 2, false);
 }
 
 void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed_t* seed)
 {
-	xor_PrintChar('0' + data->population / 10);
-	xor_PrintChar('.');
-	xor_PrintChar('0' + data->population % 10);
-	xor_Print(" Billion\n(");
+	txt_PutUInt32(data->population, 2, true);
+	txt_PutRecursive(38);
+	txt_CRLF();
 
 	// get population species description
-	if ((seed->c & 0x0080) == 0) xor_Print("Human Colonials");
+	txt_PutC('(' - 32);
+	if ((seed->c & 0x0080) == 0) txt_PutRecursive(28);
 	else
 	{
-		switch (seed->c & 0x1c00)
-		{
-			case 0x0000:
-				xor_Print("Large ");
-				break;
-			case 0x0400:
-				xor_Print("Fierce ");
-				break;
-			case 0x0800:
-				xor_Print("Small ");
-		}
-		
-		switch (seed->c & 0xe000)
-		{
-			case 0x0000:
-				xor_Print("Green ");
-				break;
-			case 0x2000:
-				xor_Print("Red ");
-				break;
-			case 0x4000:
-				xor_Print("Yellow ");
-				break;
-			case 0x6000:
-				xor_Print("Blue ");
-				break;
-			case 0x8000:
-				xor_Print("Black ");
-				break;
-			case 0xa000:
-				xor_Print("Harmless ");
-		}
+		// size
+		unsigned int x = seed->c & 0x1c00;
+		if (x <= 0x0800) txt_PutRecursive((x >> 10) + 67);
 
-		unsigned int x = (seed->a ^ seed->b) & 0x0700;
+		// color
+		x = seed->c & 0xe000;
+		if (x <= 0xa000) txt_PutRecursive((x >> 13) + 70);
 
-		switch (x)
-		{
-			case 0x0000:
-				xor_Print("Slimy ");
-				break;
-			case 0x0100:
-				xor_Print("Bug-Eyed ");
-				break;
-			case 0x0200:
-				xor_Print("Horned ");
-				break;
-			case 0x0300:
-				xor_Print("Bony ");
-				break;
-			case 0x0400:
-				xor_Print("Fat ");
-				break;
-			case 0x0500:
-				xor_Print("Furry ");
-		}
+		// texture
+		x = (seed->a ^ seed->b) & 0x0700;
+		if (x <= 0x0500) txt_PutRecursive((x >> 8) + 76);
 
-		switch ((x + (seed->c & 0x0300)) & 0x0700)
-		{
-			case 0x0000:
-				xor_Print("Rodents");
-				break;
-			case 0x0100:
-				xor_Print("Frogs");
-				break;
-			case 0x0200:
-				xor_Print("Lizards");
-				break;
-			case 0x0300:
-				xor_Print("Lobsters");
-				break;
-			case 0x0400:
-				xor_Print("Birds");
-				break;
-			case 0x0500:
-				xor_Print("Humanoids");
-				break;
-			case 0x0600:
-				xor_Print("Felines");
-				break;
-			case 0x0700:
-				xor_Print("Insects");
-		}
+		// type
+		txt_PutRecursive(((x + (seed->c & 0x0300)) & 0x0700) + 82);
+		txt_PutC('S' - 32);
 	}
-
-	xor_PrintChar(')');
+	txt_PutC(')' - 32);
 }
 
 void gen_PrintProductivity(const struct gen_sysData_t* in)
 {
-	xor_PrintUInt24(in->productivity, 5);
-	xor_Print(" M CR");
+	txt_PutRecursive(in->productivity, 5, false);
+	txt_PutString(" M");
+	txt_PutRecursive(66);
 }
 
 void gen_PrintRadius(const struct gen_seed_t* in)
 {
-	xor_PrintUInt24(((in->c & 0x0f00) + 11 * 256) + (in->b >> 8), 4);
-	xor_Print(" km");
+	txt_PutUInt32(((in->c & 0x0f00) + 11 * 256) + (in->b >> 8), 4, false);
+	txt_PutString(" km");
 }
 
 void gen_PrintDistanceToTarget()
 {
-	xor_PrintUInt24Tenths(gen_distanceToTarget);
-	xor_Print(" Light Years");
+	txt_PutUInt32(gen_distanceToTarget, 10, true);
+	txt_PutRecursive(35);
 }
 
 void gen_PrintSelectionOnMap()
