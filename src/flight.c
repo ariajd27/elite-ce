@@ -39,8 +39,8 @@ bool player_laser_overheat;
 unsigned char laserPulseCounter;
 bool drawLasers;
 
+bool playerDocked;
 enum viewDirMode_t viewDirMode;
-enum player_condition_t player_condition;
 
 unsigned char junkAmt;
 unsigned char extraSpawnDelay;
@@ -82,7 +82,6 @@ void flt_Init()
 
 	viewDirMode = FRONT;
 	flightMsgTimer = 0;
-	player_condition = DOCKED;
 	stationSoi = true;
 	flt_playerToDie = false;
 }
@@ -156,30 +155,6 @@ void launch()
 	NewShip(PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 
 	flt_DoLaunchAnimation();
-}
-
-void resetPlayerCondition()
-{
-	if (player_condition == DOCKED) launch();
-
-	player_condition = GREEN;
-}
-
-void flt_CheckPlayerCondition()
-{
-	bool hostilesPresent = false;
-	for (unsigned char hostileIndex = 0; hostileIndex < numShips; hostileIndex++)
-	{
-		if (ships[hostileIndex].isHostile)
-		{
-			hostilesPresent = true;
-			break;
-		}
-	}
-
-	if (!hostilesPresent) player_condition = GREEN;
-	else if (player_energy < 128) player_condition = RED;
-	else player_condition = YELLOW;
 }
 
 void flt_SetMsg(char message[], unsigned char time)
@@ -940,12 +915,8 @@ void flt_DoFrame(bool dashboardVisible)
 			flt_UpdatePlayerAltitude();
 			break;
 
-		case 2:
-			flt_UpdateCabinTemperature();
-			break;
-
 		case 4:
-			flt_CheckPlayerCondition();
+			flt_UpdateCabinTemperature();
 			break;
 
 		default: break;
@@ -1008,7 +979,7 @@ void flt_DoFrame(bool dashboardVisible)
 			{
 				dbg_printf("docking successful!\n");
 
-				player_condition = DOCKED;
+				player_docked = true;
 				currentMenu = STATUS;
 				numShips = 0;
 
@@ -1056,7 +1027,6 @@ void doFlight()
 		clock_t frameTimer = clock();
 
 		flt_DoFrame(true);
-		if (player_condition == DOCKED) break;
 		if (player_dead) break;
 	
 		while (clock() - frameTimer < FRAME_TIME);

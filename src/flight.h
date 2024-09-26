@@ -10,13 +10,7 @@ enum viewDirMode_t {
 	REAR
 };
 
-extern enum player_condition_t {
-	DOCKED,
-	GREEN,
-	YELLOW,
-	RED
-} player_condition;
-
+extern bool playerDocked;
 extern bool stationSoi;
 
 extern unsigned char ecmTimer;

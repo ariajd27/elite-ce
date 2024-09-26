@@ -1,13 +1,15 @@
 #include <stdlib.h>
 #include <graphx.h>
 #include "xorgfx.h"
-#include "generation.h""
+#include "generation.h"
+#include "font_data.h"
+#include "text.h"
 
 unsigned char txt_lineSpacing = 1;
 unsigned char txt_cursorX = xor_clipX + 8;
 unsigned char txt_cursorY = xor_clipY - 2;
 enum { TXT_TITLECASE, TXT_UPPERCASE, TXT_LOWERCASE } txt_capsMode = TXT_UPPERCASE;
-unsigned bool txt_capNext = false;
+bool txt_capNext = false;
 
 void txt_SetCursorPos(const unsigned char row, const unsigned char col)
 {
@@ -15,7 +17,7 @@ void txt_SetCursorPos(const unsigned char row, const unsigned char col)
 	txt_cursorY = row * 8 + xor_clipY - 2;
 }
 
-void txt_PutC(const char c)
+void txt_PutC(const unsigned char c)
 {
 	unsigned char* charData = font_data + c * 8;
 
@@ -44,7 +46,7 @@ void txt_CRLF()
 	txt_LF();
 }
 
-void txt_PutTok(const char c)
+void txt_PutTok(const unsigned char c)
 {
 	if (c < 14)
 	{
@@ -61,7 +63,7 @@ void txt_PutTok(const char c)
 				return;
 
 			case 2:
-				gen_PrintName(currentSeed);
+				gen_PrintName(&currentSeed);
 				return;
 
 			case 3:
@@ -139,13 +141,7 @@ void txt_PutTok(const char c)
 	}
 }
 
-void txt_PutTokColon(const char c)
-{
-	txt_PutTok(c);
-	txt_PutTok(':');
-}
-
-void txt_PutRecursive(char c)
+void txt_PutRecursive(unsigned char c)
 {
 	char *ptr = recursiveTokens;
 	while (c > 0)
@@ -156,7 +152,7 @@ void txt_PutRecursive(char c)
 	txt_PutString(ptr);
 }
 
-void txt_PutString(char *c)
+void txt_PutString(unsigned char *c)
 {
 	do
 	{
@@ -196,8 +192,23 @@ void txt_PutUInt32(unsigned long n, unsigned char width, bool tenths)
 }
 
 
+void txt_PutTokColon(const unsigned char c)
+{
+	txt_PutTok(c);
+	txt_PutTok(':');
+}
 
+void txt_PutTokCRLF(const unsigned char c)
+{
+	txt_PutTok(c);
+	txt_CRLF();
+}
 
+void txt_PutTokCRLFTab(const unsigned char c)
+{
+	txt_PutTokCRLF(c);
+	txt_cursorX = 6 * 8 + xor_clipX + 8;
+}
 
 
 

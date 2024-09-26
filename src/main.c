@@ -38,27 +38,6 @@ unsigned int player_kills;
 
 unsigned char player_cargo_space;
 
-void printPlayerCondition()
-{
-	switch (player_condition)
-	{
-		case DOCKED:
-			xor_Print("Docked");
-			break;
-		case GREEN:
-			xor_Print("Green");
-			break;
-		case YELLOW:
-			xor_Print("Yellow");
-			break;
-		case RED:
-			xor_Print("Red");
-			break;
-		default:
-			xor_Print("Unknown");
-	}
-}
-
 void drawMenu(bool resetCrs)
 {
 	// frame, background

@@ -3,12 +3,13 @@
 #include "generation.h"
 #include "variables.h"
 #include "xorgfx.h"
+#include "upgrades.h"
 
-enum {
-	PULSE,
-	BEAM,
-	MINING,
-	MILITARY
+struct {
+	laser_t frontLasers : 2;
+	laser_t rearLasers : 2;
+	laser_t rightLasers : 2;
+	laser_t leftLasers : 2;
 } player_lasers;
 
 unsigned char player_missiles;
@@ -128,13 +129,13 @@ bool upg_Buy(const unsigned char selIndex)
 			break;
 
 		case 4:
-			if (player_lasers == PULSE) return false;
-			player_lasers = PULSE;
+			if (player_lasers.frontLasers == PULSE) return false;
+			player_lasers.frontLasers = PULSE;
 			break;
 
 		case 5:
-			if (player_lasers == BEAM) return false;
-			player_lasers = BEAM;
+			if (player_lasers.frontLasers == BEAM) return false;
+			player_lasers.frontLasers = BEAM;
 			break;
 
 		case 6:
@@ -168,13 +169,13 @@ bool upg_Buy(const unsigned char selIndex)
 			break;
 
 		case 12:
-			if (player_lasers == MINING) return false;
-			player_lasers = MINING;
+			if (player_lasers.frontLasers == MINING) return false;
+			player_lasers.frontLasers = MINING;
 			break;
 
 		case 13:
-			if (player_lasers == MILITARY) return false;
-			player_lasers = MILITARY;
+			if (player_lasers.frontLasers == MILITARY) return false;
+			player_lasers.frontLasers = MILITARY;
 			break;
 
 		default:

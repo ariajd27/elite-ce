@@ -73,7 +73,7 @@ void gen_PrintName(const struct gen_seed_t* in)
 		gen_Twist(&nameSeed.a, &nameSeed.b, &nameSeed.c);
 		if (tknIndex == 0) continue;
 
-		txt_PutTok(tknIndex);
+		txt_PutTok(tknIndex & 0x80);
 	}
 }
 
@@ -145,7 +145,7 @@ void gen_PrintPopulation(const struct gen_sysData_t* data, const struct gen_seed
 
 void gen_PrintProductivity(const struct gen_sysData_t* in)
 {
-	txt_PutRecursive(in->productivity, 5, false);
+	txt_PutUInt32(in->productivity, 5, false);
 	txt_PutString(" M");
 	txt_PutRecursive(66);
 }
@@ -164,10 +164,10 @@ void gen_PrintDistanceToTarget()
 
 void gen_PrintSelectionOnMap()
 {
-	xor_SetCursorPos(0, xor_textRows - 1);
-	gen_PrintName(&selectedSeed, false);
-	xor_SetCursorPos(0, xor_textRows);
-	xor_Print("Distance: ");
+	txt_SetCursorPos(0, xor_textRows - 1);
+	gen_PrintName(&selectedSeed);
+	txt_SetCursorPos(0, xor_textRows);
+	txt_PutTokColon(191);
 	gen_PrintDistanceToTarget();
 }
 
@@ -220,8 +220,8 @@ void gen_DrawLocalMap()
 		{
 			labelOnLine[row] = true;
 
-			xor_SetCursorPos((x - xor_clipX) / 8 + 1, row);
-			gen_PrintName(&loopSeed, true);
+			txt_SetCursorPos((x - xor_clipX) / 8 + 1, row);
+			gen_PrintName(&loopSeed);
 		}
 	}
 	while (i != 0);

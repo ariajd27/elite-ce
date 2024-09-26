@@ -1,11 +1,18 @@
 #ifndef upgrades_include_file
 #define upgrades_include_file
 
-extern enum {
+typedef enum {
 	PULSE,
 	BEAM,
 	MINING,
 	MILITARY
+} laser_t;
+
+extern struct {
+	laser_t frontLasers : 2;
+	laser_t rearLasers : 2;
+	laser_t rightLasers : 2;
+	laser_t leftLasers : 2;
 } player_lasers;
 
 extern unsigned char player_missiles;

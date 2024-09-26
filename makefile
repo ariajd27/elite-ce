@@ -8,7 +8,7 @@ DESCRIPTION = "Elite for the TI-84+ CE"
 COMPRESSED = YES
 ARCHIVED = NO
 
-CFLAGS = -Wall -Wextra -Oz
+CFLAGS = -Wall -Wextra -Oz -Wno-pointer-sign
 CXXFLAGS = -Wall -Wextra -Oz
 
 # ----------------------------

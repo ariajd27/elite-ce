@@ -12,11 +12,14 @@ void txt_SetCursorPos(const unsigned char row, const unsigned char col);
 void txt_LF();
 void txt_CRLF();
 
-void txt_PutC(const char c);
-void txt_PutTok(const char c);
-void txt_PutTokColon(const char c);
-void txt_PutRecursive(char c);
-void txt_PutString(char *c);
-void txt_PutUInt32(unsigned int n, unsigned char width, bool tenths);
+void txt_PutC(const unsigned char c);
+void txt_PutTok(const unsigned char c);
+void txt_PutRecursive(unsigned char c);
+void txt_PutString(unsigned char *c);
+void txt_PutUInt32(unsigned long n, unsigned char width, bool tenths);
+
+void txt_PutTokColon(const unsigned char c);
+void txt_PutTokCRLF(const unsigned char c);
+void txt_PutTokCRLFTab(const unsigned char c);
 
 #endif
