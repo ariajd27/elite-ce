@@ -8,13 +8,7 @@ typedef enum {
 	MILITARY
 } laser_t;
 
-extern struct {
-	laser_t frontLasers : 2;
-	laser_t rearLasers : 2;
-	laser_t rightLasers : 2;
-	laser_t leftLasers : 2;
-} player_lasers;
-
+extern laser_t player_lasers[4];
 extern unsigned char player_missiles;
 
 extern struct player_upgrades_t {

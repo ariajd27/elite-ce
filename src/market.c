@@ -8,6 +8,7 @@
 #include "upgrades.h"
 #include "xorgfx.h"
 #include "variables.h"
+#include "text.h"
 
 const struct mkt_tradeGood_t {
 	unsigned char basePrice;
@@ -19,7 +20,7 @@ const struct mkt_tradeGood_t {
 	{  19, -2, 't',   6, 0x01 },
 	{  20, -1, 't',  10, 0x03 },
 	{  65, -3, 't',   2, 0x07 },
-	{  40, 11, 't', 226, 0x07 }, // modified... explanation below...
+    // THIS ROW REMOVED BC SLAVERY IS BAD
 	{  83, -5, 't', 251, 0x0f },
 	{ 196,  8, 't',  54, 0x03 },
 	{ 235, 29, 't',   8, 0x78 },
@@ -33,26 +34,6 @@ const struct mkt_tradeGood_t {
 	{ 171, -2, 'k',  55, 0x1f },
 	{  45, -1, 'g', 250, 0x0f },
 	{  53, 15, 'g', 192, 0x07 }
-};
-
-const char productNames[NUM_TRADE_GOODS][13] = {
-	"Food",
-	"Textiles",
-	"Radioactives",
-	"Chemicals", 		// <- these are slaves in the original. it took a lot of deliberation,
-	"Liquor/Wines",		// but yes, i decided to remove the slave trade. ultimately, it's
-	"Luxuries",			// just too *weird* to distribute a game *in 2024* where the player
-	"Narcotics",		// can be a *slave trader* and be rewarded for it! like, *seriously?*
-	"Computers",		// i don't think they add nearly enough to *Elite* to justify releasing
-	"Machinery",		// a slave trade simulator where human beings are measured by the ton.
-	"Alloys",
-	"Firearms",
-	"Furs",
-	"Minerals",
-	"Gold",
-	"Platinum",
-	"Gemstones",
-	"Alien Items"
 };
 
 unsigned char mkt_localPrices[NUM_TRADE_GOODS];
@@ -81,13 +62,9 @@ void mkt_ResetLocalMarket()
 void mkt_PrintMarketTable()
 {
 	// headings
-	xor_SetCursorPos(1, 3);
-	xor_Print("PRODUCT");
-	xor_SetCursorPos(16, 3);
-	xor_Print("PRICE");
-	xor_SetCursorPos(23, 3);
-	xor_Print("AMOUNT");
-
+	txt_SetCursorPos(0, 17);
+	txt_PutRecursive(95);
+	
 	// table body
 	for (unsigned char i = 0; i < NUM_TRADE_GOODS; i++)
 	{

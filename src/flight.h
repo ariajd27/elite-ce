@@ -5,9 +5,9 @@
 
 enum viewDirMode_t {
 	FRONT,
+	REAR,
 	LEFT,
-	RIGHT,
-	REAR
+	RIGHT
 };
 
 extern bool playerDocked;

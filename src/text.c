@@ -11,10 +11,20 @@ unsigned char txt_cursorY = xor_clipY - 2;
 enum { TXT_TITLECASE, TXT_UPPERCASE, TXT_LOWERCASE } txt_capsMode = TXT_UPPERCASE;
 bool txt_capNext = false;
 
-void txt_SetCursorPos(const unsigned char row, const unsigned char col)
+void txt_SetCursorRow(const unsigned char row)
+{
+	txt_cursorY = row * 8 + xor_clipY - 2;
+}
+
+void txt_SetCursorCol(const unsigned char col)
 {
 	txt_cursorX = col * 8 + xor_clipX + 8;
-	txt_cursorY = row * 8 + xor_clipY - 2;
+}
+
+void txt_SetCursorPos(const unsigned char row, const unsigned char col)
+{
+	txt_SetCursorRow(row);
+	txt_SetCursorCol(col);
 }
 
 void txt_PutC(const unsigned char c)
@@ -191,6 +201,11 @@ void txt_PutUInt32(unsigned long n, unsigned char width, bool tenths)
 	}
 }
 
+void txt_PutTokSpace(const unsigned char c)
+{
+	txt_PutTok(c);
+	txt_PutTok(' ');
+}
 
 void txt_PutTokColon(const unsigned char c)
 {
@@ -209,8 +224,6 @@ void txt_PutTokCRLFTab(const unsigned char c)
 	txt_PutTokCRLF(c);
 	txt_cursorX = 6 * 8 + xor_clipX + 8;
 }
-
-
 
 
 

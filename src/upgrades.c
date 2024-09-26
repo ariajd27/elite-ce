@@ -5,12 +5,7 @@
 #include "xorgfx.h"
 #include "upgrades.h"
 
-struct {
-	laser_t frontLasers : 2;
-	laser_t rearLasers : 2;
-	laser_t rightLasers : 2;
-	laser_t leftLasers : 2;
-} player_lasers;
+laser_t player_lasers[4];
 
 unsigned char player_missiles;
 

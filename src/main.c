@@ -18,6 +18,8 @@
 #include "flight.h"
 #include "input.h"
 #include "upgrades.h"
+#include "menu.h"
+#include "text.h"
 
 char cmdr_name[CMDR_NAME_MAX_LENGTH];
 unsigned char cmdr_name_length = 0;
@@ -38,7 +40,7 @@ unsigned int player_kills;
 
 unsigned char player_cargo_space;
 
-void drawMenu(bool resetCrs)
+/*void drawMenu(bool resetCrs)
 {
 	// frame, background
 	gfx_SetColor(COLOR_BLACK);
@@ -205,9 +207,9 @@ void drawMenu(bool resetCrs)
 	}
 
 	gfx_BlitBuffer();
-}
+}*/
 
-bool doMenuInput()
+/*bool doMenuInput()
 {
 	clock_t frameTimer = clock();
 
@@ -462,7 +464,7 @@ bool doMenuInput()
 	if (lastMenu != currentMenu) drawMenu(true);
 	
 	return true;
-}
+}*/
 
 void begin()
 {
@@ -493,7 +495,7 @@ void begin()
 	flt_Init();
 }
 
-unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
+/*unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
 {
 	numShips = 0;
 	struct Ship* titleShip = NewShip(shipType, 
@@ -552,7 +554,7 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 
 	numShips = 0;
 	return acceptEnter ? 1 : returnVal;
-}
+}*/
 
 void loadGame()
 {
@@ -571,7 +573,7 @@ void loadGame()
 	ti_Read(&player_kills, 3, 1, saveHandle);
 	ti_Read(&player_cargo_space, 1, 1, saveHandle);
 	ti_Read(&player_missiles, 1, 1, saveHandle);
-	ti_Read(&player_lasers, 1, 1, saveHandle);
+	ti_Read(&player_lasers, 1, 4, saveHandle);
 	ti_Read(&player_upgrades, 1, 1, saveHandle);
 	ti_Read(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
 
@@ -611,7 +613,7 @@ void saveGame()
 	ti_Write(&player_kills, 3, 1, saveHandle);
 	ti_Write(&player_cargo_space, 1, 1, saveHandle);
 	ti_Write(&player_missiles, 1, 1, saveHandle);
-	ti_Write(&player_lasers, 1, 1, saveHandle);
+	ti_Write(&player_lasers, 1, 4, saveHandle);
 	ti_Write(&player_upgrades, 1, 1, saveHandle);
 	ti_Write(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
 	ti_Write(&mkt_localQuantities, 1, NUM_TRADE_GOODS, saveHandle);
@@ -619,7 +621,7 @@ void saveGame()
 	ti_Close(saveHandle);
 }
 
-bool nameCmdr() // returns TRUE if abort requested by user
+/*bool nameCmdr() // returns TRUE if abort requested by user
 {
 	gfx_FillScreen(COLOR_BLACK);
 	xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
@@ -661,7 +663,7 @@ bool nameCmdr() // returns TRUE if abort requested by user
 	while (enter == 0);
 
 	return false;
-}
+}*/
 
 bool run()
 {
@@ -672,6 +674,13 @@ bool run()
 	// this will be overwritten if a save is detected and selected
 	begin();
 
+
+	// inserted for testing
+	menu_PlayerStatus();
+	while (getChar() == '\0');
+	return false;
+
+/*
 	// here is the save game loading logic. first, we try to open the save
 	saveHandle = ti_Open(SAVE_VAR_NAME, "r");
 	ti_Close(saveHandle);
@@ -736,6 +745,7 @@ bool run()
 	// has a chance to restart. otherwise, the player has already selected "Quit",
 	// so return false to break out of the loop in main();
 	return player_dead;
+*/
 }
 
 // here is the actual entry point for the program

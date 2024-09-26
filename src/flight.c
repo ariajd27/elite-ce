@@ -464,7 +464,7 @@ void flt_TryLasers()
 
 	// if we have pulse lasers, make 'em pulse!
 	if (laserPulseCounter > 0) return;
-	if (player_lasers == PULSE) laserPulseCounter += PULSE_LASER_INTERVAL;
+	if (player_lasers[viewDirMode] == PULSE) laserPulseCounter += PULSE_LASER_INTERVAL;
 
 	// actually shoot: first step, pay to fire the lasers
 	player_laser_temp += 8;
@@ -979,7 +979,7 @@ void flt_DoFrame(bool dashboardVisible)
 			{
 				dbg_printf("docking successful!\n");
 
-				player_docked = true;
+				playerDocked = true;
 				currentMenu = STATUS;
 				numShips = 0;
 
