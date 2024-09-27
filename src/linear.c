@@ -1,103 +1,192 @@
+#include <stdlib.h>
 #include "linear.h"
+#include "intmath.h"
 
-float v_norm(const vector_t* vec)
+struct vector_t add(struct vector_t a, struct vector_t b)
 {
-	return vec->x * vec->x + vec->y * vec->y + vec->z * vec->z;
+	struct vector_t newVector;
+	newVector.x = a.x + b.x;
+	newVector.y = a.y + b.y;
+	newVector.z = a.z + b.z;
+	return newVector;
 }
 
-void v_normalize(vector_t* vec)
+struct vector_t sub(struct vector_t a, struct vector_t b)
 {
-	float norm = v_norm(vec);
-
-	vec->x /= norm;
-	vec->y /= norm;
-	vec->z /= norm;
+	struct vector_t newVector;
+	newVector.x = a.x - b.x;
+	newVector.y = a.y - b.y;
+	newVector.z = a.z - b.z;
+	return newVector;
 }
 
-vector_t sv_mul(const float s, const vector_t* vec)
+signed int dot(struct vector_t a, struct vector_t b)
 {
-	return (vector_t){
-		s * vec->x,
-		s * vec->y,
-		s * vec->z
-	};
+	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-vector_t vv_add(const vector_t* vec1, const vector_t* vec2)
+struct vector_t cross(struct vector_t a, struct vector_t b)
 {
-	return (vector_t){
-		vec1->x + vec2->x,
-		vec1->y + vec2->y,
-		vec1->z + vec2->z
-	};
+	struct vector_t newVector;
+	newVector.x = (a.y * b.z - a.z * b.y) / 256;
+	newVector.y = (a.z * b.x - a.x * b.z) / 256;
+	newVector.z = (a.x * b.y - a.y * b.x) / 256;
+	return newVector;
 }
 
-vector_t vv_sub(const vector_t* vec1, const vector_t* vec2)
+struct vector_t mul(struct vector_t a, signed int b)
 {
-	return (vector_t){
-		vec1->x - vec2->x,
-		vec1->y - vec2->y,
-		vec1->z - vec2->z
-	};
+	struct vector_t newVector;
+	newVector.x = a.x * b;
+	newVector.y = a.y * b;
+	newVector.z = a.z * b;
+	return newVector;
 }
 
-float vv_dot(const vector_t* vec1, const vector_t* vec2)
+struct vector_t sDiv(struct vector_t a, signed int b)
 {
-	return vec1->x * vec2->x + vec1->y * vec2->y + vec1->z * vec2->z;
+	struct vector_t newVector;
+	newVector.x = a.x / b;
+	newVector.y = a.y / b;
+	newVector.z = a.z / b;
+	return newVector;
 }
 
-vector_t vv_cross(const vector_t* vec1, const vector_t* vec2)
+struct vector_t proj(struct vector_t a, struct vector_t b)
 {
-	return (vector_t){
-		vec1->y * vec2->z - vec1->z * vec2->y,
-		vec1->z * vec2->x - vec1->x * vec2->z,
-		vec1->x * vec2->y - vec1->y * vec2->x
-	};
+	return mul(b, dot(a, b) / dot (b, b));
 }
 
-vector_t vv_proj(const vector_t* vec1, const vector_t* vec2)
+unsigned int magnitude(struct vector_t a)
 {
-	return sv_mul(vv_dot(vec1, vec2) / (v_norm(vec2) * v_norm(vec2)), vec2);
+	// prepare everything to be modified
+	unsigned int x = a.x < 0 ? -1 * a.x : a.x;
+	unsigned int y = a.y < 0 ? -1 * a.y : a.y;
+	unsigned int z = a.z < 0 ? -1 * a.z : a.z;
+	unsigned char scale = 0;
+
+	// scale down to avoid overflows
+	while (x > 0x03ff || y > 0x03ff || z > 0x03ff)
+	{
+		x >>= 1;
+		y >>= 1;
+		z >>= 1;
+		scale++;
+	}
+
+	unsigned int mag = intsqrt(x * x + y * y + z * z);
+
+	// scale back up to compensate
+	while (scale > 0)
+	{
+		mag <<= 1;
+		scale--;
+	}
+
+	return mag;
 }
 
-void sm_mul(const float s, matrix_t* mx)
+struct vector_t normalize(struct vector_t a)
 {
-	mx->vx = sv_mul(s, &mx->vx);
-	mx->vy = sv_mul(s, &mx->vy);
-	mx->vz = sv_mul(s, &mx->vz);
+	struct vector_t newVector;
+	signed int const mag = magnitude(a) & 0x7fffff;
+
+	unsigned char scale1 = 8;
+	unsigned char scale2 = 0;
+	unsigned int scalingTrialInt = intabs(a.x) | intabs(a.y) | intabs(a.z);
+	while (scalingTrialInt > 0x7fff)
+	{
+		scalingTrialInt >>= 1;
+		scale1 -= 1;
+		scale2 += 1;
+	}
+
+	newVector.x = (a.x << scale1) / mag << scale2;
+	newVector.y = (a.y << scale1) / mag << scale2;
+	newVector.z = (a.z << scale1) / mag << scale2;
+
+	return newVector;
 }
 
-vector_t vm_mul(const vector_t* vec, const matrix_t* mx)
+struct intmatrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
+		signed int a4, signed int a5, signed int a6, signed int a7, signed int a8)
 {
-	return (vector_t){
-		vec->x * mx->vx.x + vec->x * mx->vx.y + vec->x * mx->vx.z,
-		vec->y * mx->vy.x + vec->y * mx->vy.y + vec->y * mx->vy.z,
-		vec->z * mx->vz.x + vec->z * mx->vz.y + vec->z * mx->vz.z
-	};
+	struct intmatrix_t newMatrix;
+	newMatrix.a[0] = a0;
+	newMatrix.a[1] = a1;
+	newMatrix.a[2] = a2;
+	newMatrix.a[3] = a3;
+	newMatrix.a[4] = a4;
+	newMatrix.a[5] = a5;
+	newMatrix.a[6] = a6;
+	newMatrix.a[7] = a7;
+	newMatrix.a[8] = a8;
+	return newMatrix;
 }
 
-void m_transpose(matrix_t* mx)
+struct vector_t getCol(struct intmatrix_t a, unsigned char b)
 {
-	float temp = mx->vx.y;
-	mx->vx.y = mx->vy.x;
-	mx->vy.x = temp;
-
-	temp = mx->vx.z;
-	mx->vx.z = mx->vz.x;
-	mx->vz.x = temp;
-
-	temp = mx->vy.z;
-	mx->vy.z = mx->vz.y;
-	mx->vz.y = temp;
+	struct vector_t newVector;
+	newVector.x = a.a[0 + b];
+	newVector.y = a.a[3 + b];
+	newVector.z = a.a[6 + b];
+	return newVector;
 }
 
-void m_orthonormalize(matrix_t* mx)
+struct vector_t getRow(struct intmatrix_t a, unsigned char b)
 {
-	v_normalize(&mx->vx);
+	struct vector_t newVector;
+	newVector.x = a.a[3 * b + 0];
+	newVector.y = a.a[3 * b + 1];
+	newVector.z = a.a[3 * b + 2];
+	return newVector;
+}
 
-	vector_t proj = vv_proj(&mx->vy, &mx->vx);
-	mx->vy = vv_sub(&mx->vy, &proj);
-	v_normalize(&mx->vy);
+struct intmatrix_t sMul(struct intmatrix_t a, signed int b)
+{
+	struct intmatrix_t newMatrix;
+	for (unsigned char i = 0; i < 9; i++) newMatrix.a[i] = a.a[i] * b;
+	return newMatrix;
+}
 
-	mx->vz = vv_cross(&mx->vx, &mx->vy);
+struct vector_t vMul(struct intmatrix_t a, struct vector_t b)
+{
+	struct vector_t newVector;
+	newVector.x = (a.a[0] * b.x + a.a[1] * b.y + a.a[2] * b.z) / 256;
+	newVector.y = (a.a[3] * b.x + a.a[4] * b.y + a.a[5] * b.z) / 256;
+	newVector.z = (a.a[6] * b.x + a.a[7] * b.y + a.a[8] * b.z) / 256;
+	return newVector;
+}
+
+struct intmatrix_t transpose(struct intmatrix_t a)
+{
+	struct intmatrix_t newMatrix;
+	newMatrix.a[0] = a.a[0];
+	newMatrix.a[1] = a.a[3];
+	newMatrix.a[2] = a.a[6];
+	newMatrix.a[3] = a.a[1];
+	newMatrix.a[4] = a.a[4];
+	newMatrix.a[5] = a.a[7];
+	newMatrix.a[6] = a.a[2];
+	newMatrix.a[7] = a.a[5];
+	newMatrix.a[8] = a.a[8];
+	return newMatrix;
+}
+
+struct intmatrix_t orthonormalize(struct intmatrix_t a)
+{
+	// modified from original algorithm
+	struct vector_t u1 = getRow(a, 2);
+	u1 = normalize(u1); // done with u1!
+
+	struct vector_t u2 = getRow(a, 1);
+	u2 = sub(u2, proj(u1, u2)); // ig this just isn't very efficient on the 6502...
+	u2 = normalize(u2);         // whatever. i'm doing it here, bc i can
+
+	// now to save a bunch of time
+	struct vector_t u3 = cross(u2, u1); // magnitude already equals 1 x 1 = 1... that was easy
+
+	struct intmatrix_t output = Matrix(u3.x, u3.y, u3.z, u2.x, u2.y, u2.z, u1.x, u1.y, u1.z);
+
+	return output;
 }

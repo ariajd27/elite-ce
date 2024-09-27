@@ -1,34 +1,42 @@
-#ifndef LINEAR_H
-#define LINEAR_H
+#ifndef linear_include_file
+#define linear_include_file
 
-#include <float.h>
+struct point_t
+{
+	unsigned int x;
+	unsigned char y;
+};
 
-typedef struct {
-	float x;
-	float y;
-	float z;
-} vector_t;
+struct vector_t
+{
+	signed int x; // vector components should be Q15.8 magnitude
+	signed int y;
+	signed int z; 
+};
 
-typedef struct {
-	vector_t vx;
-	vector_t vy;
-	vector_t vz;
-} matrix_t;
+struct vector_t add(struct vector_t a, struct vector_t b);
+struct vector_t sub(struct vector_t a, struct vector_t b);
+signed int dot(struct vector_t a, struct vector_t b);
+struct vector_t cross(struct vector_t a, struct vector_t b);
+struct vector_t mul(struct vector_t a, signed int b);
+struct vector_t sDiv(struct vector_t a, signed int b);
+struct vector_t proj(struct vector_t a, struct vector_t b);
+unsigned int magnitude(struct vector_t a);
+struct vector_t normalize(struct vector_t a);
 
-float v_norm(const vector_t* vec);
-void v_normalize(vector_t* vec);
+struct intmatrix_t
+{
+	signed int a[9];
+};
 
-vector_t sv_mul(const float s, const vector_t* vec);
+struct intmatrix_t Matrix(signed int a0, signed int a1, signed int a2, signed int a3, 
+		signed int a4, signed int a5, signed int a6, signed int a7, signed int a8);
+struct vector_t getCol(struct intmatrix_t a, unsigned char b);
+struct vector_t getRow(struct intmatrix_t a, unsigned char b);
 
-vector_t vv_sum(const vector_t* vec1, const vector_t* vec2);
-float vv_dot(const vector_t* vec1, const vector_t* vec2);
-vector_t vv_cross(const vector_t* vec1, const vector_t* vec2);
-vector_t vv_proj(const vector_t* vec1, const vector_t* vec2);
-
-void sm_mul(const float s, matrix_t* mx);
-vector_t vm_mul(const vector_t* vec, const matrix_t* mx);
-
-void m_transpose(matrix_t* mx);
-void m_orthonormalize(matrix_t* mx);
+struct intmatrix_t sMul(struct intmatrix_t a, signed int b);
+struct vector_t vMul(struct intmatrix_t a, struct vector_t b);
+struct intmatrix_t transpose(struct intmatrix_t a);
+struct intmatrix_t orthonormalize(struct intmatrix_t a);
 
 #endif

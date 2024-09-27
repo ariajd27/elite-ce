@@ -145,7 +145,7 @@ void launch()
 
 	// spawn station
 	stationSoi = true;
-	struct Ship* station = NewShip(BP_CORIOLIS,
+	struct ship_t* station = NewShip(BP_CORIOLIS,
 								   (struct vector_t){ 0, 0, -256 },
 								   Matrix(256,0,0, 0,256,0, 0,0,256));
 	station->hasEcm = true;
@@ -364,23 +364,23 @@ bool flt_CanJump()
 
 	// find the sun and planet
 	unsigned char planetIndex = 0;
-	while (ships[planetIndex].shipType != PLANET) planetIndex++;
+	while (planet.shipType != PLANET) planetIndex++;
 
 	if (!stationSoi)
 	{
 		unsigned char sunIndex = 0;
-		while (ships[sunIndex].shipType != SUN) sunIndex++;
+		while (sun.shipType != SUN) sunIndex++;
 	
 		// if both sun and planet are too close, the jump is impossible
-		if (ships[sunIndex].position.z < 0x020000 && ships[planetIndex].position.z < 0x020000)
+		if (sun.position.z < 0x020000 && planet.position.z < 0x020000)
 		{
 			flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
 			return false;
 		}
 	}
-	else if (ships[planetIndex].position.z > 0
-		  && intpow(ships[planetIndex].position.x >> 8, 2) 
-		   + intpow(ships[planetIndex].position.y >> 8, 2) <= 9276)
+	else if (planet.position.z > 0
+		  && intpow(planet.position.x >> 8, 2) 
+		   + intpow(planet.position.y >> 8, 2) <= 9276)
 	{
 		flt_SetMsg("Dangerous trajectory!", FLTMSG_MED_TIME);
 		return false;
@@ -431,13 +431,13 @@ void flt_TryInSystemJump()
 	
 	// find the sun and planet to do the jump
 	unsigned char sunIndex = 0;
-	while (ships[sunIndex].shipType != SUN) sunIndex++;
+	while (sun.shipType != SUN) sunIndex++;
 	unsigned char planetIndex = 0;
-	while (ships[planetIndex].shipType != PLANET) planetIndex++;
+	while (planet.shipType != PLANET) planetIndex++;
 
 	// do the jump
-	ships[planetIndex].position.z -= 0x010000;
-	ships[sunIndex].position.z -= 0x010000;
+	planet.position.z -= 0x010000;
+	sun.position.z -= 0x010000;
 
 	drawCycle = 0; // stimulate some enemies to spawn!
 }
@@ -538,7 +538,7 @@ void flt_LaunchMissile()
 {	
 	if (numShips + 1 >= MAX_SHIPS) return; // no room to spawn a missile
 
-	struct Ship* missile = NewShip(BP_MISSILE,
+	struct ship_t* missile = NewShip(BP_MISSILE,
 								   (struct vector_t){ 0, MISSILE_LAUNCH_Y, MISSILE_LAUNCH_Z },
 								   Matrix(256,0,0, 0,256,0, 0,0,-256));
 	missile->speed = MISSILE_LAUNCH_SPEED;
@@ -623,36 +623,25 @@ bool doFlightInput()
 // this will only be called if we know that there is no station already
 void flt_TrySpawnStation()
 {
-	// find the planet
-	unsigned char planetIndex;
-	for (planetIndex = 0; ships[planetIndex].shipType != PLANET; planetIndex++);
-
 	// find the station's current (imaginary) position in its orbit
 	const struct vector_t stationPos = 
-		add(ships[planetIndex].position, mul(getCol(ships[planetIndex].orientation, 2), 2 * 96));
+		add(planet.position, mul(getCol(planet.orientation, 2), 2 * 96));
 
 	// check distances
 	if (intabs(stationPos.x) > 49152) return;
 	if (intabs(stationPos.y) > 49152) return;
 	if (intabs(stationPos.z) > 49152) return;
 
-	// we are going to spawn the station if we get here. but first we must delete the star
-	unsigned char starIndex;
-	for (starIndex = 0; ships[starIndex].shipType != SUN; starIndex++);
-	RemoveShip(starIndex);
-
 	// spawn the station
-	struct Ship* station = NewShip(BP_CORIOLIS,
-								   stationPos,
-								   ships[planetIndex].orientation);
+	InitShip(&station, BP_CORIOLIS, stationPos, planet.orientation);
 
 	// flip the nose vector so the slot faces the planet
-	station->orientation.a[6] *= -1;
-	station->orientation.a[7] *= -1;
-	station->orientation.a[8] *= -1;
+	station.orientation.a[6] *= -1;
+	station.orientation.a[7] *= -1;
+	station.orientation.a[8] *= -1;
 
 	// make the station spin
-	station->roll = 127;
+	station.roll = 127;
 
 	stationSoi = true;
 }
@@ -712,12 +701,12 @@ void flt_UpdateCabinTemperature() // also handles fuel scooping
 
 	// find the sun
 	unsigned char sunIndex = 0;
-	while (ships[sunIndex].shipType != SUN) sunIndex++;
+	while (sun.shipType != SUN) sunIndex++;
 
 
-	unsigned int const sunX = intabs(ships[sunIndex].position.x) >> 8;
-	unsigned int const sunY = intabs(ships[sunIndex].position.y) >> 8;
-	unsigned int const sunZ = intabs(ships[sunIndex].position.z) >> 8;
+	unsigned int const sunX = intabs(sun.position.x) >> 8;
+	unsigned int const sunY = intabs(sun.position.y) >> 8;
+	unsigned int const sunZ = intabs(sun.position.z) >> 8;
 
 	if (sunX > 256 || sunY > 256 || sunZ > 256) return; // if we are going to overflow on the multiplication,
 														// we're too far away for this to matter anyway.
@@ -822,7 +811,7 @@ void flt_TrySpawnShips()
 							   : rand() % 256 < 10 ? BP_CANISTER
 							   : BP_ASTEROID;
 
-		struct Ship* junk = NewShip(junkType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
+		struct ship_t* junk = NewShip(junkType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,256));
 
 		if (junkType == BP_COBRA) return; // will fly itself
 		
@@ -846,7 +835,7 @@ void flt_TrySpawnShips()
 		// check for spawning a cop
 		if (rand() % 256 < player_outlaw)
 		{
-			struct Ship* cop = NewShip(BP_VIPER, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
+			struct ship_t* cop = NewShip(BP_VIPER, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			cop->aggro = 60;
 			cop->isHostile = true;
 			
@@ -870,7 +859,7 @@ void flt_TrySpawnShips()
 		
 			const unsigned char hunterType = rand() % 2 ? BP_COBRA : BP_PYTHON;
 
-			struct Ship* enemy = NewShip(hunterType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
+			struct ship_t* enemy = NewShip(hunterType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			enemy->isHostile = true;
 			enemy->aggro = 28;
 			enemy->hasEcm = rand() % 256 >= 200; // 22% chance
@@ -886,7 +875,7 @@ void flt_TrySpawnShips()
 
 			const unsigned char pirateType = rand() % 2 ? BP_MAMBA : BP_SIDEWINDER;
 
-			struct Ship* enemy = NewShip(pirateType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
+			struct ship_t* enemy = NewShip(pirateType, flt_GetSpawnPos(), Matrix(256,0,0, 0,256,0, 0,0,-256));
 			enemy->isHostile = true;
 			enemy->aggro = rand() % 64;
 			enemy->hasEcm = rand() % 256 <= 10; // 4% chance
@@ -1073,9 +1062,9 @@ void flt_Death()
 
 	for (unsigned char i = 0; i < NUM_PLAYER_DEATH_CANS; i++)
 	{
-		struct Ship* can = NewShip(BP_CANISTER,
-								   (struct vector_t){ 0, 0, 0 },
-								   Matrix(256,0,0, 0,256,0, 0,0,256));
+		struct ship_t* can = NewShip(BP_CANISTER,
+								     (struct vector_t){ 0, 0, 0 },
+								     Matrix(256,0,0, 0,256,0, 0,0,256));
 		can->speed = player_speed / 4;
 		can->pitch = 127;
 		can->roll = 127;
