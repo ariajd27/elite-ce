@@ -3,7 +3,6 @@
 
 #include "gfx/gfx.h"
 #include "xorgfx.h"
-#include "text.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -22,6 +21,8 @@
 #include "upgrades.h"
 
 #include <debug.h>
+
+player_condition_t player_condition = DOCKED;
 
 unsigned char player_speed;
 signed char player_roll;
@@ -169,26 +170,26 @@ void flt_SetMsg(char message[], unsigned char time)
 
 void drawSpaceView()
 {
-	txt_SetCursorPos(10, 9);
+	xor_SetCursorPos(10, 9);
 	switch(viewDirMode)
 	{
 		case FRONT:
-			txt_PutRecursive(96); // "FRONT "
+			xor_Print("Front");
 			break;
 
 		case REAR:
-			txt_PutRecursive(97); // "REAR "
+			xor_Print("Rear");
 			break;
 
 		case LEFT:
-			txt_PutRecursive(98); // "LEFT "
+			xor_Print("Left");
 			break;
 
 		case RIGHT:
-			txt_PutRecursive(99); // "RIGHT "
+			xor_Print("Right");
 			break;
 	}
-	txt_PutRecursive(15); // "VIEW "
+	xor_Print(" View");
 
 	xor_Crosshair(VIEW_HCENTER, VIEW_VCENTER, CRS_SPREAD, CRS_SIZE);
 
@@ -796,6 +797,15 @@ struct vector_t flt_GetSpawnPos()
 	return spawnPos;
 }
 
+void flt_ResetPlayerCondition() {
+	player_condition = GREEN;
+	for (unsigned char i = 0; i < numShips; i++) {
+		if (ships[i].shipType != BP_ASTEROID) player_condition = YELLOW;
+	}
+	if (player_condition == GREEN) return;
+	if (player_energy < 255) player_condition = RED;
+}
+
 void flt_TrySpawnShips()
 {
 	if (stationSoi) return; // nothing spawns in the safe zone!
@@ -1081,8 +1091,8 @@ void flt_Death()
 		clock_t frameTimer = clock();
 
 		flt_DoFrame(false);
-		txt_SetCursorPos(9, 9);
-		txt_PutRecursive(146); // "[UPPERCASE]GAME OVER"
+		xor_SetCursorPos(9, 9);
+		xor_Print("GAME OVER");
 
 		while (clock() - frameTimer < FRAME_TIME);
 

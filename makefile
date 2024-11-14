@@ -5,7 +5,7 @@
 NAME = ELITE
 ICON = icon.png
 DESCRIPTION = "Elite for the TI-84+ CE"
-COMPRESSED = YES
+COMPRESSED = NO
 ARCHIVED = NO
 
 CFLAGS = -Wall -Wextra -Oz -Wno-pointer-sign

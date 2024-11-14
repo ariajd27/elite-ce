@@ -5,9 +5,15 @@
 #include "xorgfx.h"
 #include "intmath.h"
 #include "trig.h"
+#include "font_data.h"
 #include "variables.h"
 
 #include <debug.h>
+
+unsigned char xor_cursorX = 0;
+unsigned char xor_cursorY = 0;
+
+bool xor_lineSpacing;
 
 bool xor_InClipRegion(signed int x, signed int y)
 {
@@ -379,4 +385,126 @@ void xor_Ellipse(signed int cX, signed int cY, signed int uX, signed int uY, sig
 
 	// fill gap in loop
 	xor_Line(lastX, lastY, cX + uX * 255 / 256, cY + uY * 255 / 256);
+}
+
+void xor_Char(unsigned int x, unsigned char y, char toPrint)
+{
+	const unsigned char* charData = font_data + (toPrint - 32) * 8;
+
+	for (unsigned char yy = 0; yy < 8; yy++)
+	{
+		for (unsigned char xx = 0; xx < 8; xx++)
+		{
+			if ((charData[yy] & (0x80 >> xx)) == 0) continue;
+			xor_PointNoClip(x + xx, y + yy);
+		}
+	}
+}
+
+void xor_CenterText(char toPrint[], unsigned char length, unsigned char y)
+{
+	for (unsigned int x = 0; x < length; x++)
+	{
+		xor_Char(VIEW_HCENTER - 4 * length + 8 * x, y, toPrint[x]);
+	}
+}
+
+void xor_CenterTextOffset(const char toPrint[], unsigned char length, unsigned char y, signed char offset)
+{
+	for (unsigned int x = 0; x < length; x++)
+	{
+		xor_Char(VIEW_HCENTER - 4 * length - 4 * offset + 8 * x, y, toPrint[x]);
+	}
+}
+
+void xor_SetCursorPos(unsigned char x, unsigned char y)
+{
+	xor_cursorX = x;
+	xor_cursorY = y;
+}
+
+void xor_CRLF()
+{
+	xor_cursorY++;
+	if (xor_lineSpacing) xor_cursorY++;
+	xor_cursorX = 0;
+}
+
+void xor_PrintChar(char toPrint)
+{
+	if (toPrint == '\n')
+	{
+		xor_CRLF();
+		return;
+	}
+
+	xor_Char(xor_cursorX * 8 + xor_clipX + 8, xor_cursorY * 8 + xor_clipY - 2, toPrint);
+	xor_cursorX++;
+
+	if (xor_cursorX >= xor_textCols) xor_CRLF();
+}
+
+void xor_Print(char const str[])
+{
+	for (unsigned char i = 0; str[i] != '\0'; i++) xor_PrintChar(str[i]);
+}
+
+void xor_PrintUInt8(unsigned char toPrint, unsigned char maxLength)
+{
+	unsigned char dividend = toPrint;
+	bool leading = true;
+
+	for (unsigned char divisor = intpow(10, maxLength - 1); divisor >= 1; divisor /= 10)
+	{
+		char nextChar = '0' + dividend / divisor;
+		if (nextChar == '0' && leading && divisor > 1) nextChar = ' ';
+		else leading = false;
+
+		xor_PrintChar(nextChar);
+		dividend %= divisor;
+	}
+}
+
+void xor_PrintUInt8Tenths(unsigned char toPrint, unsigned char maxLength)
+{
+	xor_PrintUInt8(toPrint / 10, maxLength);
+	xor_PrintChar('.');
+	xor_PrintUInt8(toPrint % 10, 1);
+}
+
+void xor_PrintUInt24(unsigned int toPrint, unsigned char maxLength)
+{
+	unsigned int dividend = toPrint;
+	bool leading = true;
+
+	for (unsigned int divisor = intpow(10, maxLength - 1); divisor >= 1; divisor /= 10)
+	{
+		char nextChar = '0' + dividend / divisor;
+		if (nextChar == '0' && leading && divisor > 1) nextChar = ' ';
+		else leading = false;
+
+		xor_PrintChar(nextChar);
+		dividend %= divisor;
+	}
+}
+
+void xor_PrintUInt24Adaptive(unsigned int toPrint)
+{
+	if (toPrint == 0)
+	{
+		xor_PrintChar('0');
+	}
+	else
+	{
+		unsigned char trialLength;
+		for (trialLength = 8; intpow(10, trialLength - 1) > toPrint; trialLength--);
+		xor_PrintUInt24(toPrint, trialLength);
+	}
+}
+
+void xor_PrintUInt24Tenths(unsigned int toPrint)
+{
+	xor_PrintUInt24Adaptive(toPrint / 10);
+	xor_PrintChar('.');
+	xor_PrintUInt8(toPrint % 10, 1);
 }

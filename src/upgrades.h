@@ -8,10 +8,11 @@ typedef enum {
 	MILITARY
 } laser_t;
 
-extern laser_t player_lasers[4];
+extern laser_t player_lasers[];
+
 extern unsigned char player_missiles;
 
-extern struct player_upgrades_t {
+typedef struct {
 	unsigned char largeCargoBay : 1;
 	unsigned char ecm : 1;
 	unsigned char fuelScoops : 1;
@@ -20,7 +21,9 @@ extern struct player_upgrades_t {
 	unsigned char extraEnergy : 1;
 	unsigned char dockingComputer : 1;
 	unsigned char galacticHyperdrive : 1;
-} player_upgrades;
+} player_upgrades_t;
+	
+extern player_upgrades_t player_upgrades;
 
 void upg_PrintOutfittingTable();
 bool upg_Buy(const unsigned char selIndex);

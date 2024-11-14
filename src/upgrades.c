@@ -6,19 +6,8 @@
 #include "upgrades.h"
 
 laser_t player_lasers[4];
-
+player_upgrades_t player_upgrades;
 unsigned char player_missiles;
-
-struct {
-	unsigned char largeCargoBay : 1;
-	unsigned char ecm : 1;
-	unsigned char fuelScoops : 1;
-	unsigned char escapeCapsule : 1;
-	unsigned char energyBomb : 1;
-	unsigned char extraEnergy : 1;
-	unsigned char dockingComputer : 1;
-	unsigned char galacticHyperdrive : 1;
-} player_upgrades;
 
 const char upg_displayNames[NUM_UPGRADES][20] = {
 	"Missile",
@@ -124,13 +113,13 @@ bool upg_Buy(const unsigned char selIndex)
 			break;
 
 		case 4:
-			if (player_lasers.frontLasers == PULSE) return false;
-			player_lasers.frontLasers = PULSE;
+			if (player_lasers[0] == PULSE) return false;
+			player_lasers[0] = PULSE;
 			break;
 
 		case 5:
-			if (player_lasers.frontLasers == BEAM) return false;
-			player_lasers.frontLasers = BEAM;
+			if (player_lasers[0] == BEAM) return false;
+			player_lasers[0] = BEAM;
 			break;
 
 		case 6:
@@ -164,13 +153,13 @@ bool upg_Buy(const unsigned char selIndex)
 			break;
 
 		case 12:
-			if (player_lasers.frontLasers == MINING) return false;
-			player_lasers.frontLasers = MINING;
+			if (player_lasers[0] == MINING) return false;
+			player_lasers[0] = MINING;
 			break;
 
 		case 13:
-			if (player_lasers.frontLasers == MILITARY) return false;
-			player_lasers.frontLasers = MILITARY;
+			if (player_lasers[0] == MILITARY) return false;
+			player_lasers[0] = MILITARY;
 			break;
 
 		default:

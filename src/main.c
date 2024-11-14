@@ -18,8 +18,6 @@
 #include "flight.h"
 #include "input.h"
 #include "upgrades.h"
-#include "menu.h"
-#include "text.h"
 
 char cmdr_name[CMDR_NAME_MAX_LENGTH];
 unsigned char cmdr_name_length = 0;
@@ -39,6 +37,27 @@ unsigned char player_outlaw;
 unsigned int player_kills;
 
 unsigned char player_cargo_space;
+
+void printPlayerCondition()
+{
+	switch (player_condition)
+	{
+		case DOCKED:
+			xor_Print("Docked");
+			break;
+		case GREEN:
+			xor_Print("Green");
+			break;
+		case YELLOW:
+			xor_Print("Yellow");
+			break;
+		case RED:
+			xor_Print("Red");
+			break;
+		default:
+			xor_Print("Unknown");
+	}
+}
 
 void drawMenu(bool resetCrs)
 {
@@ -573,7 +592,7 @@ void loadGame()
 	ti_Read(&player_kills, 3, 1, saveHandle);
 	ti_Read(&player_cargo_space, 1, 1, saveHandle);
 	ti_Read(&player_missiles, 1, 1, saveHandle);
-	ti_Read(&player_lasers, 1, 4, saveHandle);
+	ti_Read(&player_lasers, 1, 1, saveHandle);
 	ti_Read(&player_upgrades, 1, 1, saveHandle);
 	ti_Read(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
 
@@ -613,7 +632,7 @@ void saveGame()
 	ti_Write(&player_kills, 3, 1, saveHandle);
 	ti_Write(&player_cargo_space, 1, 1, saveHandle);
 	ti_Write(&player_missiles, 1, 1, saveHandle);
-	ti_Write(&player_lasers, 1, 4, saveHandle);
+	ti_Write(&player_lasers, 1, 1, saveHandle);
 	ti_Write(&player_upgrades, 1, 1, saveHandle);
 	ti_Write(&inventory, 1, NUM_TRADE_GOODS, saveHandle);
 	ti_Write(&mkt_localQuantities, 1, NUM_TRADE_GOODS, saveHandle);
@@ -621,7 +640,7 @@ void saveGame()
 	ti_Close(saveHandle);
 }
 
-/*bool nameCmdr() // returns TRUE if abort requested by user
+bool nameCmdr() // returns TRUE if abort requested by user
 {
 	gfx_FillScreen(COLOR_BLACK);
 	xor_CenterText("---- E L I T E ----", 19, HEADER_Y);
@@ -663,7 +682,7 @@ void saveGame()
 	while (enter == 0);
 
 	return false;
-}*/
+}
 
 bool run()
 {
@@ -674,13 +693,6 @@ bool run()
 	// this will be overwritten if a save is detected and selected
 	begin();
 
-
-	// inserted for testing
-	menu_PlayerStatus();
-	while (getChar() == '\0');
-	return false;
-
-/*
 	// here is the save game loading logic. first, we try to open the save
 	saveHandle = ti_Open(SAVE_VAR_NAME, "r");
 	ti_Close(saveHandle);
@@ -724,7 +736,7 @@ bool run()
 		if (toExit) break; // "quit" pressed instead of just "return"
 
 		// part 2: physics!
-		resetPlayerCondition(); // also handles launch from station if necessary
+		flt_ResetPlayerCondition(); // also handles launch from station if necessary
 		
 		doFlight(); // this is a loop that will exit when a menu is opened
 					// or when the player dies
@@ -745,7 +757,6 @@ bool run()
 	// has a chance to restart. otherwise, the player has already selected "Quit",
 	// so return false to break out of the loop in main();
 	return player_dead;
-*/
 }
 
 // here is the actual entry point for the program

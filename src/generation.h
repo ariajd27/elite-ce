@@ -18,6 +18,8 @@ void gen_Twist(unsigned short* a, unsigned short* b, unsigned short* c);
 
 struct gen_sysData_t
 {
+	char name[9]; // null-terminated
+
 	unsigned char economy : 3;
 	unsigned char government : 3;
 	unsigned char techLevel : 4;
@@ -38,7 +40,7 @@ void gen_ResetDistanceToTarget();
 
 void gen_SetSystemData(struct gen_sysData_t* out, struct gen_seed_t* in);
 
-void gen_PrintName(const struct gen_seed_t* in);
+void gen_PrintName(const struct gen_seed_t* in, const bool lowercasify);
 void gen_PrintEconomy(const struct gen_sysData_t* in);
 void gen_PrintGovernment(const struct gen_sysData_t* in);
 void gen_PrintTechnology(const struct gen_sysData_t* in);

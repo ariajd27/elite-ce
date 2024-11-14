@@ -3,6 +3,15 @@
 
 #include <stdbool.h>
 
+typedef enum {
+	DOCKED,
+	GREEN,
+	YELLOW,
+	RED
+} player_condition_t;
+
+extern player_condition_t player_condition;
+
 enum viewDirMode_t {
 	FRONT,
 	REAR,
@@ -17,7 +26,7 @@ extern unsigned char ecmTimer;
 
 void flt_Init();
 
-void resetPlayerCondition();
+void flt_ResetPlayerCondition();
 void drawSpaceView();
 void drawDashboard();
 void doFlight();
