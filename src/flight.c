@@ -146,14 +146,12 @@ void launch()
 
 	// spawn station
 	stationSoi = true;
-	struct ship_t* station = NewShip(BP_CORIOLIS,
-								   (struct vector_t){ 0, 0, -256 },
-								   Matrix(256,0,0, 0,256,0, 0,0,256));
-	station->hasEcm = true;
-	station->roll = 127;
+	InitShip(&station, BP_CORIOLIS, (struct vector_t){ 0, 0, -256 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+	station.hasEcm = true;
+	station.roll = 127;
 
 	// spawn planet
-	NewShip(PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
+	InitShip(&planet, PLANET, (struct vector_t){ 0, 0, 49152 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 
 	flt_DoLaunchAnimation();
 }
@@ -195,7 +193,9 @@ void drawSpaceView()
 
 	// ships
 	FlipAxes(viewDirMode);
-	for(unsigned char i = 0; i < numShips; i++) DrawShip(i);
+	DrawShip(&sun);
+	DrawShip(&planet);
+	for(unsigned char i = 0; i < numShips; i++) DrawShip(&ships[i]);
 	RestoreAxes(viewDirMode);
 
 	stardust_Move(viewDirMode, player_speed, player_pitch, player_roll);
@@ -723,46 +723,46 @@ void flt_UpdateCabinTemperature() // also handles fuel scooping
 
 // these checks are pretty damn generous, but that's probably good for testing
 // returns 0 for success or 1 for failure
-unsigned char flt_CheckForDocking(unsigned char stationIndex)
+unsigned char flt_CheckForDocking()
 {
 	dbg_printf("considering checking for docking...\n");
-	dbg_printf("station position: (%d, %d, %d)\n", ships[stationIndex].position.x,
-			ships[stationIndex].position.y, ships[stationIndex].position.z);
-	dbg_printf("station orientation: [[%d, %d, %d], [%d, %d, %d], [%d, %d, %d]]\n", ships[stationIndex].orientation.a[0],
-			ships[stationIndex].orientation.a[1], ships[stationIndex].orientation.a[2], ships[stationIndex].orientation.a[3],
-			ships[stationIndex].orientation.a[4], ships[stationIndex].orientation.a[5], ships[stationIndex].orientation.a[6],
-			ships[stationIndex].orientation.a[7], ships[stationIndex].orientation.a[8]);
+	dbg_printf("station position: (%d, %d, %d)\n", station.position.x,
+			station.position.y, station.position.z);
+	dbg_printf("station orientation: [[%d, %d, %d], [%d, %d, %d], [%d, %d, %d]]\n", station.orientation.a[0],
+			station.orientation.a[1], station.orientation.a[2], station.orientation.a[3],
+			station.orientation.a[4], station.orientation.a[5], station.orientation.a[6],
+			station.orientation.a[7], station.orientation.a[8]);
 
 	if (player_speed == 0)
 		return 1;
-	if (ships[stationIndex].position.z < 0) 
+	if (station.position.z < 0) 
 		return 1;
 
 	bool successful = true;
 
 	dbg_printf("checking station orientation...");
-	if (ships[stationIndex].orientation.a[8] > -115) 
+	if (station.orientation.a[8] > -115) 
 	{
 		dbg_printf(" failure!");
 		successful = false;
 	}
 
 	dbg_printf("\nchecking station z position...");
-	if (ships[stationIndex].position.z < 119) 
+	if (station.position.z < 119) 
 	{
 		dbg_printf(" failure!");
 		successful = false;
 	}
 
 	dbg_printf("\nchecking station orientation...");
-	if (ships[stationIndex].orientation.a[3] < 107 && ships[stationIndex].orientation.a[3] > -107) 
+	if (station.orientation.a[3] < 107 && station.orientation.a[3] > -107) 
 	{
 		dbg_printf(" failure!");
 		successful = false;
 	}
 
 	dbg_printf("\nchecking station hostility...");
-	if (ships[stationIndex].isHostile)
+	if (station.isHostile)
 	{
 		dbg_printf(" failure!");
 		successful = false;
@@ -804,6 +804,60 @@ void flt_ResetPlayerCondition() {
 	}
 	if (player_condition == GREEN) return;
 	if (player_energy < 255) player_condition = RED;
+}
+
+// this gets run every frame for every ship
+// returns false usually, true if docking with station is successful
+bool flt_UpdateShip(struct ship_t *ship)
+{
+	// apply speed to other ships
+	ship->position.z -= player_speed;
+
+	// apply pitch and roll to other ships' positions
+	signed int oldY = ship->position.y - (player_roll * ship->position.x) / 256;
+	ship->position.z += (player_pitch * oldY) / 256;
+	ship->position.y = oldY - (player_pitch * ship->position.z) / 256;
+	ship->position.x += (player_roll * ship->position.y) / 256;
+
+	// apply pitch and roll to other ships' orientations
+	for (unsigned char j = 0; j < 9; j += 3)
+	{
+		ship->orientation.a[j + 1] -= player_roll * ship->orientation.a[j + 0] / 256;
+		ship->orientation.a[j + 0] += player_roll * ship->orientation.a[j + 1] / 256;
+		ship->orientation.a[j + 1] -= player_pitch * ship->orientation.a[j + 2] / 256;
+		ship->orientation.a[j + 2] += player_pitch * ship->orientation.a[j + 1] / 256;
+	}
+
+	// let the ship move itself
+	MoveShip(ship);
+
+	// no docking/colliding/grabbing when dead
+	if (player_dead) return false;
+
+	// check if we are close enough to dock/collide/grab
+	if (ship->position.x > 191) return false;
+	if (ship->position.x < -191) return false;
+	if (ship->position.y > 191) return false;
+	if (ship->position.y < -191) return false;
+	if (ship->position.z > 191) return false;
+	if (ship->position.z < -191) return false;
+
+	// docking? break out of flight loop if we succeed
+	if (ship != &station) return false;
+	if (flt_CheckForDocking()) return false;
+
+	dbg_printf("docking successful!\n");
+
+	playerDocked = true;
+	currentMenu = STATUS;
+	numShips = 0;
+
+	player_pitch = 0;
+	player_roll = 0;
+
+	flt_DoLaunchAnimation();
+
+	return true;
 }
 
 void flt_TrySpawnShips()
@@ -937,59 +991,11 @@ void flt_DoFrame(bool dashboardVisible)
 	DoAI(drawCycle % MAX_SHIPS);
 	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
 
+	flt_UpdateShip(&sun);
+	if (flt_UpdateShip(&station)) return; // return if docking successful
 	for (unsigned char i = 0; i < numShips; i++)
 	{
-		// apply speed to other ships
-		ships[i].position.z -= player_speed;
-	
-		// apply pitch and roll to other ships' positions
-		signed int oldY = ships[i].position.y - (player_roll * ships[i].position.x) / 256;
-		ships[i].position.z += (player_pitch * oldY) / 256;
-		ships[i].position.y = oldY - (player_pitch * ships[i].position.z) / 256;
-		ships[i].position.x += (player_roll * ships[i].position.y) / 256;
-	
-		// apply pitch and roll to other ships' orientations
-		for (unsigned char j = 0; j < 9; j += 3)
-		{
-			ships[i].orientation.a[j + 1] -= player_roll * ships[i].orientation.a[j + 0] / 256;
-			ships[i].orientation.a[j + 0] += player_roll * ships[i].orientation.a[j + 1] / 256;
-			ships[i].orientation.a[j + 1] -= player_pitch * ships[i].orientation.a[j + 2] / 256;
-			ships[i].orientation.a[j + 2] += player_pitch * ships[i].orientation.a[j + 1] / 256;
-		}
-	
-		// let the ship move itself
-		MoveShip(i);
-
-		// no docking/colliding/grabbing when dead
-		if (player_dead) continue;
-
-		// check if we are close enough to dock/collide/grab
-		if (ships[i].position.x > 191) continue;
-		if (ships[i].position.x < -191) continue;
-		if (ships[i].position.y > 191) continue;
-		if (ships[i].position.y < -191) continue;
-		if (ships[i].position.z > 191) continue;
-		if (ships[i].position.z < -191) continue;
-
-		// docking? break out of flight loop if we succeed
-		if (ships[i].shipType == BP_CORIOLIS)
-		{
-			if (!flt_CheckForDocking(i))
-			{
-				dbg_printf("docking successful!\n");
-
-				playerDocked = true;
-				currentMenu = STATUS;
-				numShips = 0;
-
-				player_pitch = 0;
-				player_roll = 0;
-		
-				flt_DoLaunchAnimation();
-
-				return;
-			}
-		}
+		flt_UpdateShip(&ships[i]);
 	}
 
 	drawSpaceView();

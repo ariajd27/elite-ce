@@ -10,6 +10,9 @@
 
 #include <debug.h>
 
+#define SHIPS_START ships
+#define SHIPS_END (ships + MAX_SHIPS * sizeof(struct ship_t))
+
 struct ship_t sun;
 struct ship_t planet;
 struct ship_t ships[MAX_SHIPS];
@@ -61,16 +64,27 @@ struct ship_t* NewShip(unsigned char shipType, struct vector_t position, struct 
 
 // this is usually unecessary, as wiping all ships can be easily done simply by
 // setting numShips = 0 so the other ones aren't processed and are overwritten
-void RemoveShip(unsigned char shipIndex)
+void RemoveShip(struct ship_t *ship)
 {
-	for (unsigned char i = shipIndex; i < numShips; i++)
+	bool arrayShip = ship >= SHIPS_START && ship < SHIPS_END;
+	unsigned char shipIndex = 0;
+	if (arrayShip) shipIndex = (ship - SHIPS_START) / sizeof(struct ship_t);
+
+	for (unsigned char i = 0; i < numShips; i++)
 	{
-		ships[i] = ships[i + 1];
+		if (arrayShip && i >= shipIndex) ships[i] = ships[i + 1];
 
 		// flag missiles to not have a target if their target is destroyed,
 		// otherwise simply keep them on track for their targets
-		if (ships[i].target != shipIndex) ships[i].target -= 1;
-		else ships[i].target = MAX_SHIPS;
+		// TODO allow missiles to target stations
+		if (ships[i].target != shipIndex)
+		{
+			ships[i].target -= 1;
+		}
+		else
+		{
+			ships[i].target = MAX_SHIPS;
+		}
 	}
 	numShips--;
 }
@@ -94,12 +108,12 @@ struct int_point_t ProjPoint(struct vector_t toProject)
 }
 
 // this is used by both the wireframe and explosion drawing algorithms
-struct int_point_t ProjVertex(const unsigned char shipIndex,
+struct int_point_t ProjVertex(const struct ship_t *ship,
 							  const unsigned char vertexIndex,
 							  const struct intmatrix_t transformation)
 {
 	const unsigned char* vertexData = 
-		bp_header_vectors[ships[shipIndex].shipType][BP_VERTICES] + vertexIndex * BP_L_VERT;
+		bp_header_vectors[ship->shipType][BP_VERTICES] + vertexIndex * BP_L_VERT;
 
 	const struct vector_t vertexVector = {
 		(vertexData[3] & 0b10000000) != 0 ? -1 * vertexData[0] : vertexData[0],
@@ -107,18 +121,18 @@ struct int_point_t ProjVertex(const unsigned char shipIndex,
 		(vertexData[3] & 0b00100000) != 0 ? -1 * vertexData[2] : vertexData[2]
 	};
 
-	return ProjPoint(add(vMul(transformation, vertexVector), ships[shipIndex].position));
+	return ProjPoint(add(vMul(transformation, vertexVector), ship->position));
 }
 
-void ShipAsExplosion(unsigned char shipIndex)
+void ShipAsExplosion(struct ship_t *ship)
 {
 	// the cloud expands each time it's drawn
-	ships[shipIndex].explosionSize += EXPLOSION_GROW_RATE;
+	ship->explosionSize += EXPLOSION_GROW_RATE;
 
 	// if we've overflowed, the explosion is over, so get rid of the ship
-	if (ships[shipIndex].explosionSize < EXPLOSION_START_SIZE)
+	if (ship->explosionSize < EXPLOSION_START_SIZE)
 	{
-		RemoveShip(shipIndex);
+		RemoveShip(ship);
 		return;
 	}
 
@@ -126,27 +140,27 @@ void ShipAsExplosion(unsigned char shipIndex)
 	const unsigned int savedSeed = rand() % 0xffffff;
 
 	// this is needed for vector projections
-	const struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
+	const struct intmatrix_t transformation = transpose(ship->orientation);
 
 	// make the cloud larger on-screen if actually bigger, but smaller if more distant
 	const unsigned char drawnSize = 
-		EXPLOSION_SCALE * ships[shipIndex].explosionSize / ships[shipIndex].position.z;
+		EXPLOSION_SCALE * ship->explosionSize / ship->position.z;
 
 	// how many particles are we drawing per vertex?
-	unsigned char particleCt = ships[shipIndex].explosionSize;
+	unsigned char particleCt = ship->explosionSize;
 	if (particleCt >= 128) particleCt ^= 0xff; // flip all bits, so we count up to 128 then back down
-	particleCt /= ships[shipIndex].explosionCount;
-	const unsigned char remCt = (ships[shipIndex].explosionSize ^ 0xff) % ships[shipIndex].explosionCount;
+	particleCt /= ship->explosionCount;
+	const unsigned char remCt = (ship->explosionSize ^ 0xff) % ship->explosionCount;
 	if (particleCt < 1) particleCt = 1;
 
 	// iterate through all vertices flagged for explosion particle drawing
-	for (unsigned char i = 0; i < ships[shipIndex].explosionCount; i++)
+	for (unsigned char i = 0; i < ship->explosionCount; i++)
 	{
 		// get the random seed *for this vertex*
-		srand(ships[shipIndex].explosionRand ^ i);
+		srand(ship->explosionRand ^ i);
 
 		// where is this vertex on the screen?
-		const struct int_point_t vertexPos = ProjVertex(shipIndex, i, transformation);
+		const struct int_point_t vertexPos = ProjVertex(ship, i, transformation);
 
 		// iterate through all the particles to draw for this vertex
 		for (unsigned char j = i < remCt ? 0 : 1; j <= particleCt; j++)
@@ -161,9 +175,9 @@ void ShipAsExplosion(unsigned char shipIndex)
 	srand(savedSeed);
 }
 
-void ShipAsPoint(unsigned char shipIndex)
+void ShipAsPoint(struct ship_t *ship)
 {
-	struct int_point_t screenPoint = ProjPoint(ships[shipIndex].position);
+	struct int_point_t screenPoint = ProjPoint(ship->position);
 
 	screenPoint.x -= (signed int)SHPPT_WIDTH / 2;
 	screenPoint.y -= (signed int)SHPPT_HEIGHT / 2;
@@ -171,22 +185,22 @@ void ShipAsPoint(unsigned char shipIndex)
 	xor_FillRectangle(screenPoint.x, screenPoint.y, SHPPT_WIDTH, SHPPT_HEIGHT);
 }
 
-void ShipAsWireframe(unsigned char shipIndex)
+void ShipAsWireframe(struct ship_t *ship)
 {
-	unsigned char distance = ships[shipIndex].position.z >> 8;
+	unsigned char distance = ship->position.z >> 8;
 	if (distance > 31) distance = 31;
 
-	const struct intmatrix_t transformation = transpose(ships[shipIndex].orientation);
+	const struct intmatrix_t transformation = transpose(ship->orientation);
 
 	// backface culling
 	unsigned int faceVisible;
-	if(ships[shipIndex].isExploding == 1) faceVisible = 0xffffff;
+	if(ship->isExploding == 1) faceVisible = 0xffffff;
 	else
 	{
 		faceVisible = 0x008000; // only bit 15 is true
-		for (unsigned char i = 0; i < ships[shipIndex].numFaces; i++)
+		for (unsigned char i = 0; i < ship->numFaces; i++)
 		{
-			unsigned char* faceData = bp_header_vectors[ships[shipIndex].shipType][BP_FACES] + i * BP_L_FACE;
+			unsigned char* faceData = bp_header_vectors[ship->shipType][BP_FACES] + i * BP_L_FACE;
 			unsigned char faceVisibility = faceData[0] & 0b00011111;
 
 			if (distance > faceVisibility) faceVisible |= 1 << i;
@@ -203,7 +217,7 @@ void ShipAsWireframe(unsigned char shipIndex)
 				};
 
 				struct vector_t lineOfSight = 
-					add(vMul(ships[shipIndex].orientation, ships[shipIndex].position), faceNormal);
+					add(vMul(ship->orientation, ship->position), faceNormal);
 
 				if (dot(lineOfSight, faceNormal) < 0) faceVisible |= 1 << i;
 				else faceVisible &= ~(1 << i);
@@ -222,9 +236,9 @@ void ShipAsWireframe(unsigned char shipIndex)
 		}
 	};
 
-	for (unsigned char i = 0; i < ships[shipIndex].numEdges; i++)
+	for (unsigned char i = 0; i < ship->numEdges; i++)
 	{
-		unsigned char* edgeData = bp_header_vectors[ships[shipIndex].shipType][BP_EDGES] + i * BP_L_EDGE;
+		unsigned char* edgeData = bp_header_vectors[ship->shipType][BP_EDGES] + i * BP_L_EDGE;
 
 		if (distance > edgeData[0]) continue;
 
@@ -238,7 +252,7 @@ void ShipAsWireframe(unsigned char shipIndex)
 			if (vertices[edgeData[j] >> 2].calculated) continue;
 
 			vertices[edgeData[j] >> 2].screenPosition = 
-				ProjVertex(shipIndex, edgeData[j] >> 2, transformation);
+				ProjVertex(ship, edgeData[j] >> 2, transformation);
 			vertices[edgeData[j] >> 2].calculated = true;
 		}
 
@@ -248,12 +262,12 @@ void ShipAsWireframe(unsigned char shipIndex)
 	}
 }
 
-void ShipAsBody(unsigned char shipIndex)
+void ShipAsBody(struct ship_t *ship)
 {
-	const struct int_point_t center = ProjPoint(ships[shipIndex].position);
-	const unsigned int radius = 24576 / (ships[shipIndex].position.z >> 8);
+	const struct int_point_t center = ProjPoint(ship->position);
+	const unsigned int radius = 24576 / (ship->position.z >> 8);
 
-	if (ships[shipIndex].shipType == SUN)
+	if (ship->shipType == SUN)
 	{
 		xor_FillCircle(center.x, center.y, radius);
 		return;
@@ -266,62 +280,62 @@ void ShipAsBody(unsigned char shipIndex)
 	if (!gen_PlanetHasCrater()) return;
 
 	// only the draw the crater if it's facing the camera
-	if (ships[shipIndex].orientation.a[5] < 0) return;
+	if (ship->orientation.a[5] < 0) return;
 	
 	// draw the crater!!!!!
-	xor_Ellipse(center.x + 83 * ships[shipIndex].orientation.a[3] / (ships[shipIndex].position.z >> 8),
-				center.y + 83 * ships[shipIndex].orientation.a[4] / (ships[shipIndex].position.z >> 8),
-				96 * ships[shipIndex].orientation.a[6] / (ships[shipIndex].position.z / 128),
-				96 * ships[shipIndex].orientation.a[7] / (ships[shipIndex].position.z / 128),
-				96 * ships[shipIndex].orientation.a[0] / (ships[shipIndex].position.z / 128),
-				96 * ships[shipIndex].orientation.a[1] / (ships[shipIndex].position.z / 128),
+	xor_Ellipse(center.x + 83 * ship->orientation.a[3] / (ship->position.z >> 8),
+				center.y + 83 * ship->orientation.a[4] / (ship->position.z >> 8),
+				96 * ship->orientation.a[6] / (ship->position.z / 128),
+				96 * ship->orientation.a[7] / (ship->position.z / 128),
+				96 * ship->orientation.a[0] / (ship->position.z / 128),
+				96 * ship->orientation.a[1] / (ship->position.z / 128),
 				64);
 }
 
-void DrawShip(unsigned char shipIndex)
+void DrawShip(struct ship_t *ship)
 {
-	if (ships[shipIndex].toExplode)
+	if (ship->toExplode)
 	{
 		// if we flagged starting an explosion, we need to set up
 		// that explosion before doing anything else
 
-		ships[shipIndex].laserFiring = false;
-		ships[shipIndex].toExplode = false;
-		ships[shipIndex].isExploding = true;
+		ship->laserFiring = false;
+		ship->toExplode = false;
+		ship->isExploding = true;
 
-		ships[shipIndex].speed = 0;
-		ships[shipIndex].acceleration = 0;
-		ships[shipIndex].pitch = 0;
-		ships[shipIndex].roll = 0;
+		ship->speed = 0;
+		ship->acceleration = 0;
+		ship->pitch = 0;
+		ship->roll = 0;
 
 		// let's get us a seed!
-		ships[shipIndex].explosionRand = rand() % 256;
+		ship->explosionRand = rand() % 256;
 	}
 
-	if (ships[shipIndex].position.z <= 0) return;
+	if (ship->position.z <= 0) return;
 
 	// suns and planets jump off the bus earlier, because since they can be so large,
 	// they need to be drawn even if they're way off screen bc they might spill over into
 	// the screen anyway
-	if (ships[shipIndex].shipType > BP_ESCAPEPOD)
+	if (ship->shipType > BP_ESCAPEPOD)
 	{
-		ShipAsBody(shipIndex);
+		ShipAsBody(ship);
 		return;
 	}
 
-	if ((unsigned int)ships[shipIndex].position.z >= 0xc00000) return;
-	if (ships[shipIndex].position.x >= ships[shipIndex].position.z) return;
-	if (ships[shipIndex].position.x < -1 * ships[shipIndex].position.z) return;
-	if (ships[shipIndex].position.y >= ships[shipIndex].position.z) return;
-	if (ships[shipIndex].position.y < -1 * ships[shipIndex].position.z) return;
+	if ((unsigned int)ship->position.z >= 0xc00000) return;
+	if (ship->position.x >= ship->position.z) return;
+	if (ship->position.x < -1 * ship->position.z) return;
+	if (ship->position.y >= ship->position.z) return;
+	if (ship->position.y < -1 * ship->position.z) return;
 	
 	// finally, the three main ways to draw a ship:
 	// if it's exploding, as a cloud of dust
-	if (ships[shipIndex].isExploding) ShipAsExplosion(shipIndex);
+	if (ship->isExploding) ShipAsExplosion(ship);
 	// if it's far away, as a dot
-	else if ((ships[shipIndex].position.z >> 9) > ships[shipIndex].visibility) ShipAsPoint(shipIndex);
+	else if ((ship->position.z >> 9) > ship->visibility) ShipAsPoint(ship);
 	// otherwise, as a beautiful 3d wireframe
-	else ShipAsWireframe(shipIndex);
+	else ShipAsWireframe(ship);
 }
 
 void DoAI(unsigned char shipIndex)
@@ -521,57 +535,57 @@ void RotateShip(signed int* x, signed int* y, signed char amount)
 	}
 }
 
-void MoveShip(unsigned char shipIndex)
+void MoveShip(struct ship_t *ship)
 {
 	// move ship along nose vector
-	struct vector_t const noseVector = getRow(ships[shipIndex].orientation, 2);
-	ships[shipIndex].position = add(ships[shipIndex].position, 
-			sDiv(mul(noseVector, ships[shipIndex].speed), 64));
+	struct vector_t const noseVector = getRow(ship->orientation, 2);
+	ship->position = add(ship->position, 
+			sDiv(mul(noseVector, ship->speed), 64));
 
 	// apply acceleration, clamping between 0 and max speed for ship type
-	if (ships[shipIndex].acceleration > 0 || ships[shipIndex].speed >= -1 * ships[shipIndex].acceleration)
+	if (ship->acceleration > 0 || ship->speed >= -1 * ship->acceleration)
 	{
-		ships[shipIndex].speed += ships[shipIndex].acceleration;
+		ship->speed += ship->acceleration;
 
-		unsigned char const maxSpeed = bp_header_vectors[ships[shipIndex].shipType][BP_GENERAL][BP_MAX_SPEED];
-		if (ships[shipIndex].speed > maxSpeed) ships[shipIndex].speed = maxSpeed;
+		unsigned char const maxSpeed = bp_header_vectors[ship->shipType][BP_GENERAL][BP_MAX_SPEED];
+		if (ship->speed > maxSpeed) ship->speed = maxSpeed;
 	}
 
-	ships[shipIndex].acceleration = 0;
+	ship->acceleration = 0;
 
 	// apply roll
-	if (ships[shipIndex].roll != 0)
+	if (ship->roll != 0)
 	{
-		RotateShip(&ships[shipIndex].orientation.a[3], 
-				&ships[shipIndex].orientation.a[0], 
-				ships[shipIndex].roll);
-		RotateShip(&ships[shipIndex].orientation.a[4], 
-				&ships[shipIndex].orientation.a[1], 
-				ships[shipIndex].roll);
-		RotateShip(&ships[shipIndex].orientation.a[5], 
-				&ships[shipIndex].orientation.a[2], 
-				ships[shipIndex].roll);
+		RotateShip(&ship->orientation.a[3], 
+				&ship->orientation.a[0], 
+				ship->roll);
+		RotateShip(&ship->orientation.a[4], 
+				&ship->orientation.a[1], 
+				ship->roll);
+		RotateShip(&ship->orientation.a[5], 
+				&ship->orientation.a[2], 
+				ship->roll);
 		
-		if (ships[shipIndex].roll > 0 && ships[shipIndex].roll < 127) ships[shipIndex].roll--;
-		else if (ships[shipIndex].roll < 0 && ships[shipIndex].roll > -128) ships[shipIndex].roll++;
+		if (ship->roll > 0 && ship->roll < 127) ship->roll--;
+		else if (ship->roll < 0 && ship->roll > -128) ship->roll++;
 
 	}
 
 	// apply pitch
-	if (ships[shipIndex].pitch != 0)
+	if (ship->pitch != 0)
 	{
-		RotateShip(&ships[shipIndex].orientation.a[3], 
-				&ships[shipIndex].orientation.a[6], 
-				ships[shipIndex].pitch);
-		RotateShip(&ships[shipIndex].orientation.a[4], 
-				&ships[shipIndex].orientation.a[7], 
-				ships[shipIndex].pitch);
-		RotateShip(&ships[shipIndex].orientation.a[5], 
-				&ships[shipIndex].orientation.a[8], 
-				ships[shipIndex].pitch);
+		RotateShip(&ship->orientation.a[3], 
+				&ship->orientation.a[6], 
+				ship->pitch);
+		RotateShip(&ship->orientation.a[4], 
+				&ship->orientation.a[7], 
+				ship->pitch);
+		RotateShip(&ship->orientation.a[5], 
+				&ship->orientation.a[8], 
+				ship->pitch);
 
-		if (ships[shipIndex].pitch > 0 && ships[shipIndex].pitch < 127) ships[shipIndex].pitch--;
-		else if (ships[shipIndex].pitch < 0 && ships[shipIndex].pitch > -128) ships[shipIndex].pitch++;
+		if (ship->pitch > 0 && ship->pitch < 127) ship->pitch--;
+		else if (ship->pitch < 0 && ship->pitch > -128) ship->pitch++;
 	}
 }
 

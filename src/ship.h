@@ -52,7 +52,7 @@ extern unsigned char numShips;
 
 void InitShip(struct ship_t* ship, unsigned char shipType, struct vector_t position, struct intmatrix_t orientation);
 struct ship_t* NewShip(unsigned char shipType, struct vector_t position, struct intmatrix_t orientation);
-void RemoveShip(unsigned char shipIndex);
+void RemoveShip(struct ship_t *ship);
 
 struct int_point_t
 {
@@ -61,14 +61,14 @@ struct int_point_t
 };
 
 struct int_point_t ProjPoint(struct vector_t toProject);
-void ShipAsPoint(unsigned char shipIndex);
-void ShipAsWireframe(unsigned char shipIndex);
-void ShipAsPlanet(unsigned char shipIndex);
-void DrawShip(unsigned char shipIndex);
+void ShipAsPoint(struct ship_t* ship);
+void ShipAsWireframe(struct ship_t* ship);
+void ShipAsBody(struct ship_t* ship);
+void DrawShip(struct ship_t* ship);
 
 void DoAI(unsigned char shipIndex);
 void RotateShip(signed int* x, signed int* y, signed char amount);
-void MoveShip(unsigned char shipIndex);
+void MoveShip(struct ship_t* ship);
 void FlipAxes(enum viewDirMode_t viewDirMode);
 void RestoreAxes(enum viewDirMode_t viewDirMode);
 
