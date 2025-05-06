@@ -168,7 +168,7 @@ void flt_SetMsg(char message[], unsigned char time)
 
 void drawSpaceView()
 {
-	xor_SetCursorPos(10, 9);
+	xor_SetCursorPos(11, 1);
 	switch(viewDirMode)
 	{
 		case FRONT:
