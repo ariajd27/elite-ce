@@ -730,7 +730,10 @@ bool run()
 		
 		while (doMenuInput()); // draws new menus as necessary and
 							   // kicks out once it's time
-
+		
+		if (player_condition == DOCKED) saveGame(); // exiting dock menu = either autosave for launch
+							    // or "Save & Quit" pressed, so save always
+		
 		if (toExit) break; // "quit" pressed instead of just "return"
 
 		// part 2: physics!
@@ -741,13 +744,6 @@ bool run()
 		
 		if (player_dead) break; // the restarting behavior is handled below
 	}
-
-	// we save the game if and only if the player selects "Save & Quit", which is
-	// only an option if the player is docked. it is also the only way to quit the
-	// game if the player is docked. therefore, if we exit the loop while the player
-	// is docked, the player has pressed "Save & Quit", and vice versa. so that's
-	// what we check.
-	if (player_condition == DOCKED) saveGame();
 
 	// similar logic to above. the only time we can get here besides the player
 	// having quit the game is the "if (player_dead) break;" statement in the loop
