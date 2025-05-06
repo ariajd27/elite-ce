@@ -517,9 +517,7 @@ void begin()
 unsigned char titleScreen(unsigned char shipType, char query[], unsigned char queryLength, bool acceptEnter)
 {
 	numShips = 0;
-	struct ship_t* titleShip = NewShip(shipType, 
-									 (struct vector_t){ 0, 0, TTL_SHIP_START_Z }, 
-									 Matrix(-256,0,0, 0,0,256, 0,256,0));
+	struct ship_t* titleShip = NewShip(shipType, (struct vector_t){ 0, 0, TTL_SHIP_START_Z }, Matrix(-256,0,0, 0,0,256, 0,256,0));
 	titleShip->pitch = 127;
 	titleShip->roll = 127;
 
@@ -533,8 +531,8 @@ unsigned char titleScreen(unsigned char shipType, char query[], unsigned char qu
 		xor_CenterText(query, queryLength, xor_clipY + xor_clipHeight - 3 * HEADER_Y - 8);
 	
 		if (titleShip->position.z > TTL_SHIP_END_Z) titleShip->position.z -= TTL_SHIP_ZOOM_RATE;
-		MoveShip(0); // only rotation set, and no ai done, so it won't run away lol
-		DrawShip(0);
+		MoveShip(titleShip); // only rotation set, and no ai done, so it won't run away lol
+		DrawShip(titleShip);
 		titleShip->orientation = orthonormalize(titleShip->orientation);
 
 		if (!acceptEnter)
