@@ -72,6 +72,6 @@ void MoveShip(struct ship_t* ship);
 void FlipAxes(enum viewDirMode_t viewDirMode);
 void RestoreAxes(enum viewDirMode_t viewDirMode);
 
-void DamageShip(unsigned char shipIndex, unsigned char damage);
+void DamageShip(struct ship_t *ship, unsigned char damage);
 
 #endif

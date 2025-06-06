@@ -86,7 +86,7 @@ void RemoveShip(struct ship_t *ship)
 			ships[i].target = MAX_SHIPS;
 		}
 	}
-	numShips--;
+	if (arrayShip) numShips--;
 }
 
 struct int_point_t ProjPoint(struct vector_t toProject) 
@@ -333,18 +333,18 @@ void DrawShip(struct ship_t *ship)
 	// if it's exploding, as a cloud of dust
 	if (ship->isExploding) ShipAsExplosion(ship);
 	// if it's far away, as a dot
-	else if ((ship->position.z >> 9) > ship->visibility) ShipAsPoint(ship);
+	// else if ((ship->position.z >> 9) > ship->visibility) ShipAsPoint(ship);
 	// otherwise, as a beautiful 3d wireframe
 	else ShipAsWireframe(ship);
 }
 
 void DoAI(unsigned char shipIndex)
 {
-	// is this even a real thing?
+	// don't run this on uninited ships
 	if (shipIndex >= numShips) return;
 
 	// some things don't have AI at all
-	if (ships[shipIndex].shipType >= BP_CORIOLIS
+	if (ships[shipIndex].shipType >= BP_CORIOLIS 
 			&& ships[shipIndex].shipType != BP_ESCAPEPOD
 			&& ships[shipIndex].shipType != BP_MISSILE) return;
 
@@ -357,17 +357,19 @@ void DoAI(unsigned char shipIndex)
 			|| ships[shipIndex].position.z < -224 * 256)
 	{
 		if (ships[shipIndex].shipType == BP_CORIOLIS) stationSoi = false;
-		RemoveShip(shipIndex);
+		RemoveShip(&ships[shipIndex]);
 		return;
 	}
 
-	dbg_printf("doing AI for ship %u, shipType %u...\n", shipIndex, ships[shipIndex].shipType);
+	dbg_printf("doing AI for ship of type %u...\n", ships[shipIndex].shipType);
 
 	// recharge energy
 	if (ships[shipIndex].energy < bp_header_vectors[ships[shipIndex].shipType][BP_GENERAL][BP_MAX_ENERGY])
 	{
 		ships[shipIndex].energy++;
 	}
+
+	dbg_printf("finding go vector...\n");
 
 	// which way are we trying to go?
 	struct vector_t goVector;
@@ -428,9 +430,7 @@ void DoAI(unsigned char shipIndex)
 		else
 		{
 			// if not too close and feeling aggressive, we go towards the player. otherwise away.
-			const unsigned int distance = intabs(ships[shipIndex].position.x)
-							   			| intabs(ships[shipIndex].position.y)
-							   			| intabs(ships[shipIndex].position.z);
+			const unsigned int distance = intabs(ships[shipIndex].position.x) | intabs(ships[shipIndex].position.y) | intabs(ships[shipIndex].position.z);
 			if ((distance >> 9) != 0 && rand() % 64 < ships[shipIndex].aggro)
 			{
 				dbg_printf("aggressive mode!\n");
@@ -441,14 +441,16 @@ void DoAI(unsigned char shipIndex)
 	else
 	{
 		// escape pods flee towards the planet
-		unsigned char planetIndex;
-		for (planetIndex = 0; ships[planetIndex].shipType != PLANET; planetIndex++);
-		goVector = sub(ships[planetIndex].position, ships[shipIndex].position);
+		goVector = sub(planet.position, ships[shipIndex].position);
 	}
+
+	dbg_printf("go vector found; normalizing...\n");
 
 	// normalizing means that goAlign will have a consistent meaning
 	goVector = normalize(goVector);
 	const signed int goAlign = dot(goVector, getRow(ships[shipIndex].orientation, 2));
+
+	dbg_printf("normalized; considering using ECM...\n");
 
 	// TODO consider firing weapons
 	
@@ -589,36 +591,40 @@ void MoveShip(struct ship_t *ship)
 	}
 }
 
+void FlipAxesForShip(struct ship_t *ship, enum viewDirMode_t viewDirMode)
+{
+	if (viewDirMode == REAR)
+	{
+		ship->position.x *= -1;
+		ship->position.z *= -1;
+		for (unsigned char j = 0; j < 9; j++)
+		{
+			if (j % 3 == 1) continue;
+			ship->orientation.a[j] *= -1;
+		}
+	}
+	else
+	{
+		signed char const zMul = viewDirMode == LEFT ? -1 : 1;
+		signed int oldX = ship->position.x;
+		ship->position.x = -1 * zMul * ship->position.z;
+		ship->position.z = zMul * oldX;
+		for (unsigned char j = 0; j < 9; j += 3)
+		{
+			oldX = ship->orientation.a[j];
+			ship->orientation.a[j] = -1 * zMul * ship->orientation.a[j + 2];
+			ship->orientation.a[j + 2] = zMul * oldX;
+		}
+	}
+}
+
 void FlipAxes(enum viewDirMode_t viewDirMode)
 {
 	if (viewDirMode == FRONT) return;
 
-	for (unsigned char i = 0; i < numShips; i++)
-	{
-		if (viewDirMode == REAR)
-		{
-			ships[i].position.x *= -1;
-			ships[i].position.z *= -1;
-			for (unsigned char j = 0; j < 9; j++)
-			{
-				if (j % 3 == 1) continue;
-				ships[i].orientation.a[j] *= -1;
-			}
-		}
-		else
-		{
-			signed char const zMul = viewDirMode == LEFT ? -1 : 1;
-			signed int oldX = ships[i].position.x;
-			ships[i].position.x = -1 * zMul * ships[i].position.z;
-			ships[i].position.z = zMul * oldX;
-			for (unsigned char j = 0; j < 9; j += 3)
-			{
-				oldX = ships[i].orientation.a[j];
-				ships[i].orientation.a[j] = -1 * zMul * ships[i].orientation.a[j + 2];
-				ships[i].orientation.a[j + 2] = zMul * oldX;
-			}
-		}
-	}
+	FlipAxesForShip(&sun, viewDirMode);
+	FlipAxesForShip(&planet, viewDirMode);
+	for (unsigned char i = 0; i < numShips; i++) FlipAxesForShip(&ships[i], viewDirMode);
 }
 
 void RestoreAxes(enum viewDirMode_t viewDirMode)
@@ -638,16 +644,16 @@ void RestoreAxes(enum viewDirMode_t viewDirMode)
 	}
 }
 
-void DamageShip(unsigned char shipIndex, unsigned char damage)
+void DamageShip(struct ship_t *ship, unsigned char damage)
 {
-	if (ships[shipIndex].energy <= damage)
+	if (ship->energy <= damage)
 	{
-		ships[shipIndex].toExplode = true;
-		ships[shipIndex].energy = 0;
+		ship->toExplode = true;
+		ship->energy = 0;
 	}
 	else
 	{
-		ships[shipIndex].energy -= damage;
-		ships[shipIndex].isHostile = true; // don't shoot the station, or else!
+		ship->energy -= damage;
+		ship->isHostile = true; // don't shoot the station, or else!
 	}
 }

@@ -40,7 +40,6 @@ bool player_laser_overheat;
 unsigned char laserPulseCounter;
 bool drawLasers;
 
-bool playerDocked;
 enum viewDirMode_t viewDirMode;
 
 unsigned char junkAmt;
@@ -363,15 +362,8 @@ bool flt_CanJump()
 		}
 	}
 
-	// find the sun and planet
-	unsigned char planetIndex = 0;
-	while (planet.shipType != PLANET) planetIndex++;
-
 	if (!stationSoi)
 	{
-		unsigned char sunIndex = 0;
-		while (sun.shipType != SUN) sunIndex++;
-	
 		// if both sun and planet are too close, the jump is impossible
 		if (sun.position.z < 0x020000 && planet.position.z < 0x020000)
 		{
@@ -428,13 +420,7 @@ void flt_TryInSystemJump()
 {
 	if (stationSoi) return; // definitely too close
 	
-	if (!flt_CanJump()) return;
-	
-	// find the sun and planet to do the jump
-	unsigned char sunIndex = 0;
-	while (sun.shipType != SUN) sunIndex++;
-	unsigned char planetIndex = 0;
-	while (planet.shipType != PLANET) planetIndex++;
+	if (!flt_CanJump()) return;	
 
 	// do the jump
 	planet.position.z -= 0x010000;
@@ -502,7 +488,7 @@ void flt_TryLasers()
 		if (offsetSquared > areaSquared) continue; // we missed
 
 		// if we made it down here, we hit ship i!!! yay!!!
-		DamageShip(i, laserPower);
+		DamageShip(&ships[i], laserPower);
 	}
 
 	// put the axes back
@@ -700,11 +686,6 @@ void flt_UpdateCabinTemperature() // also handles fuel scooping
 							// and safely bc the station will always be far enough from
 							// the sun to not need a temp check
 
-	// find the sun
-	unsigned char sunIndex = 0;
-	while (sun.shipType != SUN) sunIndex++;
-
-
 	unsigned int const sunX = intabs(sun.position.x) >> 8;
 	unsigned int const sunY = intabs(sun.position.y) >> 8;
 	unsigned int const sunZ = intabs(sun.position.z) >> 8;
@@ -798,6 +779,7 @@ struct vector_t flt_GetSpawnPos()
 }
 
 void flt_ResetPlayerCondition() {
+    if (player_condition == DOCKED) launch();
 	player_condition = GREEN;
 	for (unsigned char i = 0; i < numShips; i++) {
 		if (ships[i].shipType != BP_ASTEROID) player_condition = YELLOW;
@@ -848,7 +830,7 @@ bool flt_UpdateShip(struct ship_t *ship)
 
 	dbg_printf("docking successful!\n");
 
-	playerDocked = true;
+	player_condition = DOCKED;
 	currentMenu = STATUS;
 	numShips = 0;
 
@@ -1032,7 +1014,7 @@ void doFlight()
 		clock_t frameTimer = clock();
 
 		flt_DoFrame(true);
-		if (player_dead) break;
+		if (player_dead || player_condition == DOCKED) break;
 	
 		while (clock() - frameTimer < FRAME_TIME);
 
@@ -1078,9 +1060,7 @@ void flt_Death()
 
 	for (unsigned char i = 0; i < NUM_PLAYER_DEATH_CANS; i++)
 	{
-		struct ship_t* can = NewShip(BP_CANISTER,
-								     (struct vector_t){ 0, 0, 0 },
-								     Matrix(256,0,0, 0,256,0, 0,0,256));
+		struct ship_t* can = NewShip(BP_CANISTER, (struct vector_t){ 0, 0, 0 }, Matrix(256,0,0, 0,256,0, 0,0,256));
 		can->speed = player_speed / 4;
 		can->pitch = 127;
 		can->roll = 127;
