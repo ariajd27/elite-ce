@@ -205,6 +205,40 @@ void drawSpaceView()
 	flightMsgTimer--;
 }
 
+void drawRadarDot(const struct ship_t *ship)
+{
+    // don't draw dead ships
+	if (ship->isExploding) return;
+
+	// check to make sure ship in range
+	if (ship->position.x < -63 * 256) return;
+	if (ship->position.x > 63 * 256) return;
+	if (ship->position.y < -63 * 256) return;
+	if (ship->position.y > 63 * 256) return;
+	if (ship->position.z < -63 * 256) return;
+	if (ship->position.z > 63 * 256) return;
+
+	unsigned int const x = RADAR_HCENTER + ship->position.x / RADAR_XSCALE;
+	unsigned char const y = RADAR_VCENTER - ship->position.z / RADAR_ZSCALE;
+	signed char dy = ship->position.y / RADAR_YSCALE;
+
+	// clip to fit in center dash segment
+	if (y + dy < DASH_VOFFSET + 2)
+	{
+		dy += (DASH_VOFFSET + 3) - (y + dy);
+	}
+	else if (y + dy > GFX_LCD_HEIGHT - 2)
+	{
+		dy -= (y + dy) - (GFX_LCD_HEIGHT - 3);
+	}
+
+    if (ship->isHostile) gfx_SetColor(COLOR_YELLOW);
+	else gfx_SetColor(COLOR_GREEN);
+	gfx_Line(x, y, x, y + dy);
+	gfx_SetPixel(x, y + dy);
+	gfx_SetPixel(x - 1, y + dy);
+}
+
 void drawDashboard()
 {
 	// sprited sections
@@ -213,60 +247,20 @@ void drawDashboard()
 	gfx_Sprite(dashright, DASH_HOFFSET_RIGHT, DASH_VOFFSET);
 
 	// radar dots
+    if (stationSoi) drawRadarDot(&station);
 	for (unsigned char i = 0; i < numShips; i++)
 	{
-		// assume stars, planets too far away
-		if (ships[i].shipType > BP_ESCAPEPOD) continue;
-
-		// don't draw dead ships
-		if (ships[i].isExploding) continue;
-
-		// check to make sure ship in range
-		if (ships[i].position.x < -63 * 256) continue;
-		if (ships[i].position.x > 63 * 256) continue;
-		if (ships[i].position.y < -63 * 256) continue;
-		if (ships[i].position.y > 63 * 256) continue;
-		if (ships[i].position.z < -63 * 256) continue;
-		if (ships[i].position.z > 63 * 256) continue;
-
-		unsigned int const x = RADAR_HCENTER + ships[i].position.x / RADAR_XSCALE;
-		unsigned char const y = RADAR_VCENTER - ships[i].position.z / RADAR_ZSCALE;
-		signed char dy = ships[i].position.y / RADAR_YSCALE;
-
-		// clip to fit in center dash segment
-		if (y + dy < DASH_VOFFSET + 2)
-		{
-			dy += (DASH_VOFFSET + 3) - (y + dy);
-		}
-		else if (y + dy > GFX_LCD_HEIGHT - 2)
-		{
-			dy -= (y + dy) - (GFX_LCD_HEIGHT - 3);
-		}
-
-		if (ships[i].isHostile) gfx_SetColor(COLOR_YELLOW);
-		else gfx_SetColor(COLOR_GREEN);
-		gfx_Line(x, y, x, y + dy);
-		gfx_SetPixel(x, y + dy);
-		gfx_SetPixel(x - 1, y + dy);
+        drawRadarDot(&ships[i]);
 	}
 
 	// SOI indicator
 	if (stationSoi) gfx_Sprite(stationsoi, SOI_INDIC_POS_X, SOI_INDIC_POS_Y);
 
-	// compass
-	for (unsigned char i = 0; i < numShips; i++)
-	{
-		// we are looking for the station if within its SOI (it has spawned in);
-		// otherwise, we should just head towards the planet.
-		if (ships[i].shipType != (stationSoi ? BP_CORIOLIS : PLANET)) continue;
-
-		// draw the indicator on the compass
-		const struct vector_t compassVector = normalize(ships[i].position);
-		gfx_SetColor(compassVector.z > 0 ? COLOR_YELLOW : COLOR_GREEN);
-		gfx_FillRectangle(COMPASS_HCENTER + compassVector.x / COMPASS_SCALE, 
-						  COMPASS_VCENTER + compassVector.y / COMPASS_SCALE, 2, 1);
-		break;
-	}
+	// draw the indicator on the compass
+	const struct vector_t compassVector = normalize((stationSoi ? station : planet).position);
+	gfx_SetColor(compassVector.z > 0 ? COLOR_YELLOW : COLOR_GREEN);
+	gfx_FillRectangle(COMPASS_HCENTER + compassVector.x / COMPASS_SCALE, 
+					  COMPASS_VCENTER + compassVector.y / COMPASS_SCALE, 2, 1);
 
 	// right panel
 	// speed display
@@ -967,13 +961,23 @@ void flt_DoFrame(bool dashboardVisible)
 	if (missileStatus == SEARCHING) flt_TryFindMissileTarget();
 
 	// tidy vectors for each ship -- one ship per cycle
-	ships[drawCycle % MAX_SHIPS].orientation = orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
+    const unsigned char thisTimeShip = drawCycle % (MAX_SHIPS + 1);
+    if (thisTimeShip < MAX_SHIPS)
+    {
+        ships[drawCycle % MAX_SHIPS].orientation = 
+            orthonormalize(ships[drawCycle % MAX_SHIPS].orientation);
+    }
+    else
+    {
+        station.orientation = orthonormalize(station.orientation);
+        planet.orientation = orthonormalize(planet.orientation);
+    }
 
 	// do ai -- three ships per cycle
 	DoAI(drawCycle % MAX_SHIPS);
 	DoAI((drawCycle + MAX_SHIPS / 2) % MAX_SHIPS);
 
-	flt_UpdateShip(&sun);
+	flt_UpdateShip(&planet);
 	if (flt_UpdateShip(&station)) return; // return if docking successful
 	for (unsigned char i = 0; i < numShips; i++)
 	{
